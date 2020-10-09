@@ -15,7 +15,7 @@ import optuna
 
 from pdb import set_trace
 
-from EvaluateMNIST import EvaluateMNIST
+from PrunedEvaluateMNIST import PrunedEvaluateMNIST
 
 import setGPU
 
@@ -57,16 +57,17 @@ def validate(evaluator):  # Gauge model performance
     classifier_uncompiled_model = evaluator.build_variable_depth_classifier()
     evaluator.specify_optimizer()
     classifier_compiled_model = evaluator.compile_classifier(classifier_uncompiled_model)
-    val_loss, test_loss = evaluator.train_test_and_delete_classifier(
+    val_loss, test_metrics = evaluator.train_test_and_delete_classifier(
         classifier_compiled_model
     )
-    print('Validation loss: {}'.format(val_loss))
-    return(test_loss)
+    print('Trained model validation loss: {}'.format(val_loss))
+    print('Trained model test loss: {}'.format(test_metrics['loss']))
+    return(test_metrics['categorical_accuracy'])
 
 
 def objective(trial):
     # Instantiate class
-    evaluator = EvaluateMNIST(
+    evaluator = PrunedEvaluateMNIST(
         train_images=(train_images/255.),
         test_images=(test_images/255.),
         train_labels=train_labels,
@@ -122,16 +123,17 @@ def objective(trial):
         )
     )
     score = validate(evaluator)
-    print('\nTest loss (objective function): {}\n\n\n\n\n'.format(score))
+    print('\nTrained model''s categorical accuracy on test data (objective function): {}\n\n'.format(score))
     return(score)
 
 
 sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
-    direction='minimize',
+    direction='maximize',
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=200)
 )
-study.optimize(objective, n_trials=20)
+study.optimize(objective, n_trials=1000)
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()
 
@@ -147,9 +149,8 @@ completed_trials = [
     t for t in study.trials if t.state == optuna.structs.TrialState.COMPLETE
 ]
 print('Number of completed trials is {}'.format(len(completed_trials)))
-print('Best trial:  ')
-best_trial = study.best_trial
-print('Test loss is {}...'.format(best_trial.value))
-print('Parameters: ')
+print('\n\nBest trial number is {}\n\n'.format(study.best_trial))
+print('\n\nBest categorical accuracy is {}\n\n...'.format(study.best_trial.value))
+print('\n\nParameters: ')
 for key, value in best_trial.params.items():
     print('{}: {}'.format(key, value))
