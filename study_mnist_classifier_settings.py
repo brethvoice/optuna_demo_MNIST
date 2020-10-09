@@ -51,20 +51,6 @@ train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
 
-def validate(evaluator):  # Gauge model performance
-    evaluator.specify_early_stopper()
-    evaluator.split_training_data_for_training_and_validation()
-    classifier_uncompiled_model = evaluator.build_variable_depth_classifier()
-    evaluator.specify_optimizer()
-    classifier_compiled_model = evaluator.compile_classifier(classifier_uncompiled_model)
-    val_loss, test_metrics = evaluator.train_test_and_delete_classifier(
-        classifier_compiled_model
-    )
-    print('Trained model validation loss: {}'.format(val_loss))
-    print('Trained model test loss: {}'.format(test_metrics['loss']))
-    return(test_metrics['categorical_accuracy'])
-
-
 def objective(trial):
     # Instantiate class
     evaluator = PrunedEvaluateMNIST(
@@ -122,8 +108,20 @@ def objective(trial):
             MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
         )
     )
-    score = validate(evaluator)
-    print('\nTrained model''s categorical accuracy on test data (objective function): {}\n\n'.format(score))
+    evaluator.specify_early_stopper()
+    evaluator.split_training_data_for_training_and_validation()
+    classifier_uncompiled_model = evaluator.build_variable_depth_classifier()
+    evaluator.specify_optimizer()
+    classifier_compiled_model = evaluator.compile_classifier(classifier_uncompiled_model)
+    val_loss, test_metrics = evaluator.train_test_and_delete_classifier(
+        classifier_compiled_model
+    )
+    score = test_metrics['categorical_accuracy']
+    trial.report(value=score, step=0)
+    if trial.should_prune():
+        raise optuna.TrialPruned()
+    else:
+        print('\nTrained model''s categorical accuracy on test data (objective function): {}'.format(score))
     return(score)
 
 
