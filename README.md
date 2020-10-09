@@ -5,3 +5,11 @@
 CUDA_VISIBLE_DEVICES="0", python study_mnist_classifier_settings.py
 
 or if you have more than one GPU, use whichever you want (for example, if you have two GPUs and want to use the second, that is device 1).
+
+Also, the script has an import statement:
+
+`import setGPU`
+
+which is enabled by cloning and installing the following repo:
+
+https://github.com/bamos/setGPU
