@@ -13,3 +13,5 @@ Also, the script has an import statement:
 which is enabled by cloning and installing the following repo:
 
 https://github.com/bamos/setGPU
+
+If you have `setGPU` installed, you can avoid having to tell Python which GPU to use because it will automatically select the one with least memory allocated.
