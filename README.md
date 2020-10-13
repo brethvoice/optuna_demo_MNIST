@@ -12,7 +12,7 @@ From the command line:
 
 CUDA_VISIBLE_DEVICES="0", python3 study_mnist_classifier_settings.py
 
-or if you awnt to use more than one GPU, use whichever you want (for example, if you have two GPUs and want to use the second, that is device 1).
+or if you want to use more than one GPU, use whichever you want (for example, if you have two GPUs and want to use the second, that is device 1).
 
 The script has an import statement which will automatically choose a single GPU that is least utilized so you do not need to set this parameter:
 
