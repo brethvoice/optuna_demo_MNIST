@@ -143,7 +143,7 @@ print('Number of trials was {}'.format(len(study.trials)))
 print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
 print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
 print('\n\nParameters: ')
-for key, value in best_trial.params.items():
+for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()
