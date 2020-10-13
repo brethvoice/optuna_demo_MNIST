@@ -15,10 +15,26 @@ import optuna
 
 from pdb import set_trace
 
-from PrunedEvaluateMNIST import PrunedEvaluateMNIST
+from EvaluateMNIST import EvaluateMNIST
 
 import setGPU
 
+
+# Set number of trials; depending on batch size some can take minutes each
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 3600  # 3600 seconds = one hour
+EARLY_STOPPING_PATIENCE_PARAMETER = 10  # For tf.keras' EarlyStopping callback
+VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
+MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
+
+# Establish some MNIST-specific constants used below
+MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
+JUN_SHAO_TRAINING_PROPORTION = (
+    (MNIST_TRAINING_AND_VALIDATION_SET_SIZE**(3/4)) / MNIST_TRAINING_AND_VALIDATION_SET_SIZE
+)
+MAXIMUM_BATCH_SIZE_POWER_OF_TWO = floor(
+    log2(JUN_SHAO_TRAINING_PROPORTION * MNIST_TRAINING_AND_VALIDATION_SET_SIZE)
+)
 
 # Prevent any weird authentication errors when downloading MNIST
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -29,18 +45,6 @@ ssl._create_default_https_context = ssl._create_unverified_context
 # Normalize image pixel values to be between 0 and 1
 train_images = train_images / 255.0
 test_images = test_images / 255.0
-
-# Establish constants used below
-MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
-JUN_SHAO_TRAINING_PROPORTION = (
-    (MNIST_TRAINING_AND_VALIDATION_SET_SIZE**(3/4)) / MNIST_TRAINING_AND_VALIDATION_SET_SIZE
-)
-EARLY_STOPPING_PATIENCE_PARAMETER = 10
-VERBOSITY_LEVEL_FOR_TENSORFLOW = 2
-MAXIMUM_EXPOCHS_TO_TRAIN = 100
-MAXIMUM_BATCH_SIZE_POWER_OF_TWO = floor(
-    log2(JUN_SHAO_TRAINING_PROPORTION * MNIST_TRAINING_AND_VALIDATION_SET_SIZE)
-)
 
 # Reshape images
 train_images = train_images.reshape((60000, 28, 28, 1))
@@ -53,7 +57,7 @@ test_labels = to_categorical(test_labels)
 
 def objective(trial):
     # Instantiate class
-    evaluator = PrunedEvaluateMNIST(
+    evaluator = EvaluateMNIST(
         train_images=(train_images/255.),
         test_images=(test_images/255.),
         train_labels=train_labels,
@@ -101,7 +105,7 @@ def objective(trial):
         ),
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
-        max_epochs=MAXIMUM_EXPOCHS_TO_TRAIN,
+        max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
         batch_size_power_of_two=trial.suggest_int(
             'batch_size_power_of_two',
             0,
@@ -116,39 +120,30 @@ def objective(trial):
     val_loss, test_metrics = evaluator.train_test_and_delete_classifier(
         classifier_compiled_model
     )
-    score = test_metrics['categorical_accuracy']
-    trial.report(value=score, step=0)
-    if trial.should_prune():
-        raise optuna.TrialPruned()
-    else:
-        print('\nTrained model''s categorical accuracy on test data (objective function): {}'.format(score))
-    return(score)
+    return(test_metrics['categorical_accuracy'])
 
 
+# Create and run the study
 sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
-    pruner=optuna.pruners.MedianPruner(n_startup_trials=200)
 )
-study.optimize(objective, n_trials=1000)
-fig = optuna.visualization.plot_param_importances(study)
-fig.show()
+study.optimize(
+    objective,
+    n_trials=MAXIMUM_NUMBER_OF_TRIALS_TO_RUN,
+    timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
+    gc_after_trial=True,
+    )
+set_trace()  # Before taking any more steps, pause execution
 
-set_trace()
-
+# Report out on study results:
 print('Study statistics:  ')
-print('Number of completed trials is {}'.format(len(study.trials)))
-pruned_trials = [
-    t for t in study.trials if t.state == optuna.structs.TrialState.PRUNED
-]
-print('Number of pruned trials is {}'.format(len(pruned_trials)))
-completed_trials = [
-    t for t in study.trials if t.state == optuna.structs.TrialState.COMPLETE
-]
-print('Number of completed trials is {}'.format(len(completed_trials)))
-print('\n\nBest trial number is {}\n\n'.format(study.best_trial))
-print('\n\nBest categorical accuracy is {}\n\n...'.format(study.best_trial.value))
+print('Number of trials was {}'.format(len(study.trials)))
+print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
+print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
 print('\n\nParameters: ')
 for key, value in best_trial.params.items():
     print('{}: {}'.format(key, value))
+fig = optuna.visualization.plot_param_importances(study)
+fig.show()
