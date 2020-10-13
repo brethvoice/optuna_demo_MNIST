@@ -15,19 +15,20 @@ import optuna
 
 from pdb import set_trace
 
-from EvaluateMNIST import EvaluateMNIST
+from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
 import setGPU
 
 
-# Set number of trials; depending on batch size some can take minutes each
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 3600  # 3600 seconds = one hour
+# Specify length and nature of study; depending on batch size some trials can take minutes
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 1000  # For the Optuna study itself
+NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 16 * 3600  # 3600 seconds = one hour
 EARLY_STOPPING_PATIENCE_PARAMETER = 10  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
 
-# Establish some MNIST-specific constants used below
+# Establish MNIST-specific constants used in code below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
 JUN_SHAO_TRAINING_PROPORTION = (
     (MNIST_TRAINING_AND_VALIDATION_SET_SIZE**(3/4)) / MNIST_TRAINING_AND_VALIDATION_SET_SIZE
@@ -57,7 +58,7 @@ test_labels = to_categorical(test_labels)
 
 def objective(trial):
     # Instantiate class
-    evaluator = EvaluateMNIST(
+    evaluator = PrunableEvaluateMNIST(
         train_images=(train_images/255.),
         test_images=(test_images/255.),
         train_labels=train_labels,
@@ -113,6 +114,11 @@ def objective(trial):
         )
     )
     evaluator.specify_early_stopper()
+    keras_pruner = optuna.integration.TFKerasPruningCallback(
+        trial,
+        'val_acc',
+    )
+    evaluator.callbacks.append(keras_pruner)  # Append to callbacks list
     evaluator.split_training_data_for_training_and_validation()
     classifier_uncompiled_model = evaluator.build_variable_depth_classifier()
     evaluator.specify_optimizer()
@@ -128,6 +134,7 @@ sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING),
 )
 study.optimize(
     objective,
@@ -135,15 +142,22 @@ study.optimize(
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
     )
-set_trace()  # Before taking any more steps, pause execution
 
 # Report out on study results:
 print('Study statistics:  ')
-print('Number of trials was {}'.format(len(study.trials)))
 print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
 print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
 print('\n\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
+set_trace()  # Before taking any more steps, pause execution
+completed_trials = [
+    t for t in study.trials if t.state == optuna.structs.TrialState.COMPLETE
+]
+print('Number of completed trials is {}'.format(len(completed_trials)))
+pruned_trials = [
+    t for t in study.trials if t.state == optuna.structs.TrialState.PRUNED
+]
+print('Number of pruned trials is {}'.format(len(pruned_trials)))
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()

@@ -21,8 +21,8 @@ import setGPU
 
 
 # Set number of trials; depending on batch size some can take minutes each
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 3600  # 3600 seconds = one hour
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 1000  # For the Optuna study itself
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 16 * 3600  # 3600 seconds = one hour
 EARLY_STOPPING_PATIENCE_PARAMETER = 10  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
@@ -108,7 +108,6 @@ study.optimize(
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
     )
-set_trace()  # Before taking any more steps, pause execution
 
 # Report out on study results:
 print('Study statistics:  ')
@@ -118,5 +117,6 @@ print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.valu
 print('\n\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
+set_trace()  # Before taking any more steps, pause execution
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()
