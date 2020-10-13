@@ -35,10 +35,10 @@ class EvaluateMNIST:
         adam_amsgrad_bool=False,
         number_hidden_conv_layers=1,
         hidden_layers_activation_func='relu',
-        early_stopping_patience=5,
+        early_stopping_patience=10,
         verbosity=2,
-        max_epochs=1000,
-        batch_size_power_of_two=5,
+        max_epochs=100,
+        batch_size_power_of_two=0,
     ):
         self.train_images = train_images
         self.test_images = test_images
