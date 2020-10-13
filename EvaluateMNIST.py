@@ -122,7 +122,8 @@ class EvaluateMNIST:
         test_results = model.evaluate(
             self.test_images,
             self.test_labels,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
+            return_dict=True,
         )
         take_out_trash()
         del model
