@@ -65,22 +65,22 @@ def objective(trial):
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
         adam_learn_rate=trial.suggest_uniform(
             'adam_learn_rate',
-            0.0000001,
+            0,
             1,
         ),
         adam_beta_1=trial.suggest_uniform(
             'adam_beta_1',
-            0.0000001,
+            0,
             1,
         ),
         adam_beta_2=trial.suggest_uniform(
             'adam_beta_2',
-            0.0000001,
+            0,
             1,
         ),
         adam_epsilon_multiplier=trial.suggest_int(
             'adam_epsilon_multiplier',
-            1,
+            0,
             1000000,
         ),
         adam_amsgrad_bool=trial.suggest_categorical(
