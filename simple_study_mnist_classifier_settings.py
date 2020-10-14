@@ -58,8 +58,8 @@ test_labels = to_categorical(test_labels)
 def objective(trial):
     # Instantiate class
     evaluator = EvaluateMNIST(
-        train_images=(train_images/255.),
-        test_images=(test_images/255.),
+        train_images=train_images,
+        test_images=test_images,
         train_labels=train_labels,
         test_labels=test_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),

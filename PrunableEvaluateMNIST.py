@@ -16,6 +16,7 @@ from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from numpy import min
+from numpy.random import default_rng as random_generator_instantiator
 from gc import collect as take_out_trash
 
 
@@ -47,9 +48,12 @@ class PrunableEvaluateMNIST:
         self.validation_data_proportion = validation_data_proportion
         self.optimizer = 'adam'  # This is a placeholder; see specify_optimizer method below
         self.callbacks = []  # Empty list to which one may append any number of callbacks
-        self.adam_learn_rate = adam_learn_rate  # float between 0.001 and 0.999 (0.001)
-        self.adam_beta_1 = adam_beta_1  # float between 0.001 and 0.999 (0.9)
-        self.adam_beta_2 = adam_beta_2  # float between 0.001 and 0.99 (0.999)
+        rg_learn_rate = random_generator_instantiator()
+        self.adam_learn_rate = adam_learn_rate * rg_learn_rate.beta(0.5, 0.5) # float between 0.001 and 0.999 (0.001)
+        rg_beta_1 = random_generator_instantiator()
+        self.adam_beta_1 = adam_beta_1 * rg_beta_1.beta(0.5, 0.5)  # float between 0.001 and 0.999 (0.9)
+        rg_beta_2 = random_generator_instantiator()
+        self.adam_beta_2 = adam_beta_2 * rg_beta_2.beta(0.5, 0.5)  # float between 0.001 and 0.99 (0.999)
         self.adam_epsilon = adam_epsilon_multiplier * epsilon()  # n * epsilon(), n int between 1 and 1000000 (1*epsilon=1e-7)
         self.adam_amsgrad_bool = adam_amsgrad_bool  # False or True (False)
         self.number_hidden_conv_layers = number_hidden_conv_layers  # 0 or 1 or 2 (1)

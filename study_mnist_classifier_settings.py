@@ -21,9 +21,9 @@ import setGPU
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 1000  # For the Optuna study itself
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 16 * 3600  # 3600 seconds = one hour
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 0.5 * 3600  # 3600 seconds = one hour
 EARLY_STOPPING_PATIENCE_PARAMETER = 10  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
@@ -59,8 +59,8 @@ test_labels = to_categorical(test_labels)
 def objective(trial):
     # Instantiate class
     evaluator = PrunableEvaluateMNIST(
-        train_images=(train_images/255.),
-        test_images=(test_images/255.),
+        train_imagestrain_images,
+        test_images=test_images,
         train_labels=train_labels,
         test_labels=test_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
@@ -152,11 +152,11 @@ for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
 set_trace()  # Before taking any more steps, pause execution
 completed_trials = [
-    t for t in study.trials if t.state == optuna.structs.TrialState.COMPLETE
+    t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
 ]
 print('Number of completed trials is {}'.format(len(completed_trials)))
 pruned_trials = [
-    t for t in study.trials if t.state == optuna.structs.TrialState.PRUNED
+    t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
 ]
 print('Number of pruned trials is {}'.format(len(pruned_trials)))
 fig = optuna.visualization.plot_param_importances(study)
