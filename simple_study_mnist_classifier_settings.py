@@ -10,14 +10,14 @@ import ssl
 
 from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
-from numpy import log2, floor, zeros, mean
+from numpy import log2, floor
 import optuna
 
 from pdb import set_trace
 
 from EvaluateMNIST import EvaluateMNIST
 
-import setGPU
+import setGPU  # Find and make visible the GPU with least memory allocated
 
 
 # Set number of trials; depending on batch size some can take minutes each

@@ -10,14 +10,14 @@ import ssl
 
 from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
-from numpy import log2, floor, zeros, mean
+from numpy import log2, floor
 import optuna
 
 from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
-import setGPU
+import setGPU  # Find and make visible the GPU with least memory allocated
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
@@ -59,7 +59,7 @@ test_labels = to_categorical(test_labels)
 def objective(trial):
     # Instantiate class
     evaluator = PrunableEvaluateMNIST(
-        train_imagestrain_images,
+        train_images=train_images,
         test_images=test_images,
         train_labels=train_labels,
         test_labels=test_labels,
