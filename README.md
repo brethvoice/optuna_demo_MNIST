@@ -25,4 +25,10 @@ https://github.com/bamos/setGPU
 If you have `setGPU` installed, you can avoid having to tell Python which GPU to use because it will automatically select the one with least memory allocated.
 
 **study_mnist_classifier_settings.py**
-This version also attempts to optimize the Adam settings.
+Attempts to implement median stopping rule pruner via `tf.keras` callback (a special "pruning hook" built by Optuna).This version also attempts to optimize the Adam settings, with a Beta(0.5, 0.5) Jeffreys prior for each of the `learning_rate`, `beta_1`, and `beta_2` parameters.
+
+**EvaluateMNIST.py**
+This class does not allow pruning, nor does it allow attempting to implement a Jeffreys prior optimization of the parameters for the Adam training optimizer.
+
+**PruneableEvaluateMNIST.py**
+Does the extra things `EvaluateMNIST.py` will not.
