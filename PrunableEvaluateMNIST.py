@@ -124,8 +124,8 @@ class PrunableEvaluateMNIST:
             self.test_images,
             self.test_labels,
             batch_size=self.batch_size,
-            return_dict=True,
         )
+        test_results = {out: test_results[i] for i, out in enumerate(model.metrics_names)}
         take_out_trash()
         del model
         validation_losses = history.history['val_loss']
