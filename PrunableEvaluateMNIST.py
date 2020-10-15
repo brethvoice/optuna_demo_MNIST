@@ -32,7 +32,6 @@ class PrunableEvaluateMNIST:
         adam_learn_rate=0.001,
         adam_beta_1=0.9,
         adam_beta_2=0.999,
-        adam_epsilon_multiplier=1,
         adam_amsgrad_bool=False,
         number_hidden_conv_layers=1,
         hidden_layers_activation_func='relu',
@@ -54,7 +53,6 @@ class PrunableEvaluateMNIST:
         self.adam_beta_1 = adam_beta_1 * rg_beta_1.beta(0.5, 0.5)  # float between 0.001 and 0.999 (0.9)
         rg_beta_2 = random_generator_instantiator()
         self.adam_beta_2 = adam_beta_2 * rg_beta_2.beta(0.5, 0.5)  # float between 0.001 and 0.99 (0.999)
-        self.adam_epsilon = adam_epsilon_multiplier * epsilon()  # n * epsilon(), n int between 1 and 1000000 (1*epsilon=1e-7)
         self.adam_amsgrad_bool = adam_amsgrad_bool  # False or True (False)
         self.number_hidden_conv_layers = number_hidden_conv_layers  # 0 or 1 or 2 (1)
         self.hidden_layers_activation_func = hidden_layers_activation_func  # 'relu' 'sigmoid' 'softplus' ('relu')
@@ -87,7 +85,7 @@ class PrunableEvaluateMNIST:
             learning_rate=self.adam_learn_rate,
             beta_1=self.adam_beta_1,
             beta_2=self.adam_beta_2,
-            epsilon=self.adam_epsilon,
+            epsilon=epsilon(),
             amsgrad=self.adam_amsgrad_bool,
         )
         self.optimizer = opt  # Replace placeholder from __init__

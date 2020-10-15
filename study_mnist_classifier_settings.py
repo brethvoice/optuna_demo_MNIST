@@ -79,11 +79,6 @@ def objective(trial):
             0,
             1,
         ),
-        adam_epsilon_multiplier=trial.suggest_int(
-            'adam_epsilon_multiplier',
-            0,
-            1000000,
-        ),
         adam_amsgrad_bool=trial.suggest_categorical(
             'adam_amsgrad_bool',
             [
