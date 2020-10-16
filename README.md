@@ -18,10 +18,10 @@ The script has a commented-out import statement which will automatically choose 
 
 `import setGPU`
 
-If you choose to un-comment this import statement, run the following import first (warning, will not work on Windows):
+If you choose to un-comment this import statement, run the following install first (warning, will not work on Windows):
 `pip install setGPU`
 
-If you have `setGPU` installed, this line avoid having to tell Python which GPU to use (by specifying `CUDA_VISIBLE_DEVICES`) because it will automatically select the one with least memory allocated.
+If you have `setGPU` installed, importing this module avoids having to tell Python which GPU to use (by specifying `CUDA_VISIBLE_DEVICES`) because it will automatically select the one with least memory allocated.
 
 **study_mnist_classifier_settings.py**
 Attempts to implement median stopping rule pruner via `tf.keras` callback (a special "pruning hook" built by Optuna).This version also attempts to optimize the Adam settings, with a Beta(0.5, 0.5) Jeffreys prior for each of the `learning_rate`, `beta_1`, and `beta_2` parameters.
