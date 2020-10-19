@@ -111,7 +111,7 @@ def objective(trial):
     evaluator.specify_early_stopper()
     keras_pruner = optuna.integration.TFKerasPruningCallback(
         trial,
-        'val_acc',
+        'val_categorical_accuracy',
     )
     evaluator.callbacks.append(keras_pruner)  # Append to callbacks list
     evaluator.split_training_data_for_training_and_validation()
