@@ -12,17 +12,14 @@ from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
-from tensorflow.keras.backend import epsilon
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from numpy import min
-from numpy.random import default_rng as random_generator_instantiator
 from gc import collect as take_out_trash
 
 
 class EvaluateMNIST:
     __instance__ = None
-    
+
     def __init__(
         self,
         train_images,
@@ -50,7 +47,7 @@ class EvaluateMNIST:
             EvaluateMNIST.__instance__ = self
         else:
             raise Exception("This is a singleton; EvaluateMNIST has already been created.")
-    
+
     def split_training_data_for_training_and_validation(self):
         instance_of_random_state = RandomState()
         self.train_split_images, validate_split_images, self.train_split_labels, validate_split_labels = trn_val_split(

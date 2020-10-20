@@ -8,11 +8,8 @@ https://www.analyticsvidhya.com/blog/2020/07/how-to-train-an-image-classificatio
 
 from sklearn.model_selection import train_test_split as trn_val_split
 from numpy.random import RandomState
-from tensorflow.keras.backend import clear_session
-from tensorflow.keras import layers, models
 from tensorflow.keras.callbacks import EarlyStopping
 from numpy import min
-from numpy.random import default_rng as random_generator_instantiator
 from gc import collect as take_out_trash
 
 
