@@ -15,7 +15,6 @@ import optuna
 from numpy.random import default_rng as random_generator_instantiator
 from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
@@ -24,13 +23,13 @@ from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
-# import setGPU  # Find and make visible the GPU with least memory allocated
+import setGPU  # Find and make visible the GPU with least memory allocated
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 100  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 14 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
@@ -127,7 +126,6 @@ def objective(trial):
     base_model.split_training_data_for_training_and_validation()
     
     # Build, compile, evaluate, and delete model
-    clear_session()
     working_model = models.Sequential()
     working_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
     working_model.add(layers.MaxPooling2D((2, 2), strides=2))
@@ -148,7 +146,7 @@ def objective(trial):
         loss=CategoricalCrossentropy(),
         metrics=[CategoricalAccuracy()],
     )
-    _, test_metrics = base_model.train_test_and_delete_classifier(
+    _, test_metrics = base_model.train_test_and_evaluate_classifier(
         working_model
     )
     return(test_metrics['categorical_accuracy'])

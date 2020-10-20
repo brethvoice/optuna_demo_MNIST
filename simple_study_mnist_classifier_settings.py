@@ -17,13 +17,13 @@ from pdb import set_trace
 
 from EvaluateMNIST import EvaluateMNIST
 
-# import setGPU  # Find and make visible the GPU with least memory allocated
+import setGPU
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
-# NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 100  # For the Optuna study itself
+NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 14 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback

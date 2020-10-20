@@ -8,7 +8,6 @@ https://www.analyticsvidhya.com/blog/2020/07/how-to-train-an-image-classificatio
 
 from sklearn.model_selection import train_test_split as trn_val_split
 from numpy.random import RandomState
-from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
@@ -67,7 +66,6 @@ class EvaluateMNIST:
         self.callbacks.append(earlystopper)  # Append list (instantiated as empty in __init__ method)
 
     def build_variable_depth_classifier(self):  # Define model architecture
-        clear_session()
         model = models.Sequential()
         model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
         model.add(layers.MaxPooling2D((2, 2), strides=2))
