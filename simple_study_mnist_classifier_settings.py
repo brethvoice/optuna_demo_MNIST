@@ -10,7 +10,7 @@ import ssl
 
 from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
-from numpy import log2, floor
+from numpy import log2, floor, zeros, mean
 import optuna
 
 from pdb import set_trace
@@ -20,12 +20,13 @@ from EvaluateMNIST import EvaluateMNIST
 # import setGPU  # Find and make visible the GPU with least memory allocated
 
 
-# Set number of trials; depending on batch size some can take minutes each
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 1000  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 16 * 3600  # 3600 seconds = one hour
-EARLY_STOPPING_PATIENCE_PARAMETER = 10  # For tf.keras' EarlyStopping callback
+# Specify length and nature of study; depending on batch size some trials can take minutes
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 100  # For the Optuna study itself
+NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 2 * 3600  # 3600 seconds = one hour
+MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
-MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
 
 # Establish some MNIST-specific constants used below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
@@ -54,43 +55,44 @@ test_images = test_images.reshape((10000, 28, 28, 1))
 train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
+# Instantiate base model outside of objective function
+base_model = EvaluateMNIST(
+    train_images=train_images,
+    test_images=test_images,
+    train_labels=train_labels,
+    test_labels=test_labels,
+    validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
+    early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
+    verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
+    max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
+)
+
 
 def objective(trial):
-    # Instantiate class
-    evaluator = EvaluateMNIST(
-        train_images=train_images,
-        test_images=test_images,
-        train_labels=train_labels,
-        test_labels=test_labels,
-        validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
-        number_hidden_conv_layers=trial.suggest_int(
-            'number_hidden_conv_layers',
-            0,
-            2,
-        ),
-        hidden_layers_activation_func=trial.suggest_categorical(
-            'hidden_layers_activation_func',
-            [
-                'relu',
-                'sigmoid',
-                'softplus',
-            ]
-        ),
-        early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
-        verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
-        max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
-        batch_size_power_of_two=trial.suggest_int(
-            'batch_size_power_of_two',
-            0,
-            MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
-        )
+    base_model.number_hidden_conv_layers = trial.suggest_int(
+        'number_hidden_conv_layers',
+        0,
+        2,
     )
-    evaluator.specify_early_stopper()
-    evaluator.split_training_data_for_training_and_validation()
-    classifier_uncompiled_model = evaluator.build_variable_depth_classifier()
-    evaluator.specify_optimizer()
-    classifier_compiled_model = evaluator.compile_classifier(classifier_uncompiled_model)
-    val_loss, test_metrics = evaluator.train_test_and_delete_classifier(
+    base_model.hidden_layers_activation_func = trial.suggest_categorical(
+        'hidden_layers_activation_func',
+        [
+            'relu',
+            'sigmoid',
+            'softplus',
+        ]
+    )
+    base_model.batch_size_power_of_two = trial.suggest_int(
+        'batch_size_power_of_two',
+        0,
+        MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
+    )
+    base_model.specify_early_stopper()
+    base_model.split_training_data_for_training_and_validation()
+    classifier_uncompiled_model = base_model.build_variable_depth_classifier()
+    base_model.optimizer = 'adam'
+    classifier_compiled_model = base_model.compile_classifier(classifier_uncompiled_model)
+    _, test_metrics = base_model.train_test_and_delete_classifier(
         classifier_compiled_model
     )
     return(test_metrics['categorical_accuracy'])
@@ -108,6 +110,7 @@ study.optimize(
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
     )
+set_trace()  # Before taking any more steps, pause execution
 
 # Report out on study results:
 print('Study statistics:  ')
@@ -117,6 +120,5 @@ print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.valu
 print('\n\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
-set_trace()  # Before taking any more steps, pause execution
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()

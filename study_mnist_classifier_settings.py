@@ -12,6 +12,13 @@ from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
 from numpy import log2, floor
 import optuna
+from numpy.random import default_rng as random_generator_instantiator
+from tensorflow.keras.backend import epsilon
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.backend import clear_session
+from tensorflow.keras import layers, models
+from tensorflow.keras.losses import CategoricalCrossentropy
+from tensorflow.keras.metrics import CategoricalAccuracy
 
 from pdb import set_trace
 
@@ -21,12 +28,12 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 20  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 0.5 * 3600  # 3600 seconds = one hour
-EARLY_STOPPING_PATIENCE_PARAMETER = 10  # For tf.keras' EarlyStopping callback
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
+MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
-MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
 
 # Establish MNIST-specific constants used in code below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
@@ -55,71 +62,94 @@ test_images = test_images.reshape((10000, 28, 28, 1))
 train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
+# Instantiate base model outside of objective function
+base_model = PrunableEvaluateMNIST(
+    train_images=train_images,
+    test_images=test_images,
+    train_labels=train_labels,
+    test_labels=test_labels,
+    validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
+    early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
+    verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
+    max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
+)
+
+# Insantiate random number generator for use below
+rg = random_generator_instantiator()
 
 def objective(trial):
-    # Instantiate class
-    evaluator = PrunableEvaluateMNIST(
-        train_images=train_images,
-        test_images=test_images,
-        train_labels=train_labels,
-        test_labels=test_labels,
-        validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
-        adam_learn_rate=trial.suggest_uniform(
-            'adam_learn_rate',
-            0,
-            1,
-        ),
-        adam_beta_1=trial.suggest_uniform(
-            'adam_beta_1',
-            0,
-            1,
-        ),
-        adam_beta_2=trial.suggest_uniform(
-            'adam_beta_2',
-            0,
-            1,
-        ),
-        adam_amsgrad_bool=trial.suggest_categorical(
-            'adam_amsgrad_bool',
-            [
-                False,
-                True,
-            ]
-        ),
-        number_hidden_conv_layers=trial.suggest_int(
-            'number_hidden_conv_layers',
-            0,
-            2,
-        ),
-        hidden_layers_activation_func=trial.suggest_categorical(
-            'hidden_layers_activation_func',
-            [
-                'relu',
-                'sigmoid',
-                'softplus',
-            ]
-        ),
-        early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
-        verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
-        max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
-        batch_size_power_of_two=trial.suggest_int(
-            'batch_size_power_of_two',
-            0,
-            MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
-        )
+    base_model.number_hidden_conv_layers = trial.suggest_int(
+        'number_hidden_conv_layers',
+        0,
+        2,
     )
-    evaluator.specify_early_stopper()
+    base_model.hidden_layers_activation_func = trial.suggest_categorical(
+        'hidden_layers_activation_func',
+        [
+            'relu',
+            'sigmoid',
+            'softplus',
+        ]
+    )
+    base_model.batch_size_power_of_two = trial.suggest_int(
+        'batch_size_power_of_two',
+        0,
+        MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
+    )
+    base_model.adam_learn_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+        'adam_learn_rate',
+        0,
+        1,
+    )
+    base_model.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+        'adam_beta_1',
+        0,
+        1,
+    )
+    base_model.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+        'adam_beta_2',
+        0,
+        1,
+    )
+    base_model.adam_amsgrad_bool = trial.suggest_categorical(
+        'adam_amsgrad_bool',
+        [
+            False,
+            True,
+        ]
+    )
+    base_model.specify_early_stopper()
     keras_pruner = optuna.integration.TFKerasPruningCallback(
         trial,
         'val_categorical_accuracy',
     )
-    evaluator.callbacks.append(keras_pruner)  # Append to callbacks list
-    evaluator.split_training_data_for_training_and_validation()
-    classifier_uncompiled_model = evaluator.build_variable_depth_classifier()
-    evaluator.specify_optimizer()
-    classifier_compiled_model = evaluator.compile_classifier(classifier_uncompiled_model)
-    val_loss, test_metrics = evaluator.train_test_and_delete_classifier(
-        classifier_compiled_model
+    base_model.callbacks.append(keras_pruner)  # Append to callbacks list
+    base_model.split_training_data_for_training_and_validation()
+    
+    # Build, compile, evaluate, and delete model
+    clear_session()
+    working_model = models.Sequential()
+    working_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+    working_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    for level in range(base_model.number_hidden_conv_layers):
+        working_model.add(layers.Conv2D(4, (3, 3), activation=base_model.hidden_layers_activation_func))
+        working_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    working_model.add(layers.Flatten())
+    working_model.add(layers.Dense(10, activation='softmax'))
+    base_model.optimizer = Adam(
+        learning_rate=base_model.adam_learn_rate,
+        beta_1=base_model.adam_beta_1,
+        beta_2=base_model.adam_beta_2,
+        epsilon=epsilon(),
+        amsgrad=base_model.adam_amsgrad_bool,
+    )
+    working_model.compile(
+        optimizer=base_model.optimizer,
+        loss=CategoricalCrossentropy(),
+        metrics=[CategoricalAccuracy()],
+    )
+    _, test_metrics = base_model.train_test_and_delete_classifier(
+        working_model
     )
     return(test_metrics['categorical_accuracy'])
 
