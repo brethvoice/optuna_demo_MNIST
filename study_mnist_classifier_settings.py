@@ -28,7 +28,7 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 20  # For the Optuna study itself
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
 MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs

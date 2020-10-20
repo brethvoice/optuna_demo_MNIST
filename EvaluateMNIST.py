@@ -14,7 +14,6 @@ from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.callbacks import EarlyStopping
 from numpy import min
-from gc import collect as take_out_trash
 
 
 class EvaluateMNIST:
@@ -87,7 +86,7 @@ class EvaluateMNIST:
         )
         return model
 
-    def train_test_and_delete_classifier(self, model):  # Train model
+    def train_test_and_evaluate_classifier(self, model):  # Train model, then test and report on performance
         history = model.fit(
             self.train_split_images,
             self.train_split_labels,
@@ -103,7 +102,5 @@ class EvaluateMNIST:
             batch_size=self.batch_size,
         )
         test_results = {out: test_results[i] for i, out in enumerate(model.metrics_names)}
-        take_out_trash()
-        del model
         validation_losses = history.history['val_loss']
         return min(validation_losses), test_results

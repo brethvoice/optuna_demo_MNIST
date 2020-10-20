@@ -10,7 +10,6 @@ from sklearn.model_selection import train_test_split as trn_val_split
 from numpy.random import RandomState
 from tensorflow.keras.callbacks import EarlyStopping
 from numpy import min
-from gc import collect as take_out_trash
 
 
 class PrunableEvaluateMNIST:
@@ -69,7 +68,7 @@ class PrunableEvaluateMNIST:
         )
         self.callbacks.append(early_stopper)  # Append to callbacks list
 
-    def train_test_and_delete_classifier(self, model):  # Train model
+    def train_test_and_evaluate_classifier(self, model):  # Train model
         history = model.fit(
             self.train_split_images,
             self.train_split_labels,
@@ -85,7 +84,5 @@ class PrunableEvaluateMNIST:
             batch_size=self.batch_size,
         )
         test_results = {out: test_results[i] for i, out in enumerate(model.metrics_names)}
-        take_out_trash()
-        del model
         validation_losses = history.history['val_loss']
         return min(validation_losses), test_results
