@@ -17,7 +17,7 @@ from pdb import set_trace
 
 from EvaluateMNIST import EvaluateMNIST
 
-import setGPU
+# import setGPU  # Find and make visible the GPU with least memory allocated
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
