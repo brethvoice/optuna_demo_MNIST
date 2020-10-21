@@ -25,8 +25,8 @@ from EvaluateMNIST import EvaluateMNIST
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
 MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
-MAXIMUM_EPOCHS_TO_TRAIN = 200  # Each model will not train for more than this many epochs
-EARLY_STOPPING_PATIENCE_PARAMETER = int(0.2 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
+MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 
 # Establish some MNIST-specific constants used below
@@ -56,8 +56,8 @@ test_images = test_images.reshape((10000, 28, 28, 1))
 train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
-# Instantiate base model outside of objective function
-base_model = EvaluateMNIST(
+# Instantiate standard object outside of objective function
+standard_object = EvaluateMNIST(
     train_images=train_images,
     test_images=test_images,
     train_labels=train_labels,
@@ -70,12 +70,12 @@ base_model = EvaluateMNIST(
 
 
 def objective(trial):
-    base_model.number_hidden_conv_layers = trial.suggest_int(
+    standard_object.number_hidden_conv_layers = trial.suggest_int(
         'number_hidden_conv_layers',
         0,
         2,
     )
-    base_model.hidden_layers_activation_func = trial.suggest_categorical(
+    standard_object.hidden_layers_activation_func = trial.suggest_categorical(
         'hidden_layers_activation_func',
         [
             'relu',
@@ -83,23 +83,23 @@ def objective(trial):
             'softplus',
         ]
     )
-    base_model.batch_size_power_of_two = trial.suggest_int(
+    standard_object.batch_size_power_of_two = trial.suggest_int(
         'batch_size_power_of_two',
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    base_model.specify_early_stopper()
+    standard_object.specify_early_stopper()
     keras_pruner = optuna.integration.TFKerasPruningCallback(
         trial,
         'val_categorical_accuracy',
     )
-    base_model.callbacks.append(keras_pruner)  # Append to callbacks list
-    base_model.split_training_data_for_training_and_validation()
+    standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
+    standard_object.split_training_data_for_training_and_validation()
     clear_session()
-    classifier_uncompiled_model = base_model.build_variable_depth_classifier()
-    base_model.optimizer = 'adam'
-    classifier_compiled_model = base_model.compile_classifier(classifier_uncompiled_model)
-    test_metrics = base_model.train_test_and_evaluate_classifier(
+    classifier_uncompiled_model = standard_object.build_variable_depth_classifier()
+    standard_object.optimizer = 'adam'
+    classifier_compiled_model = standard_object.compile_classifier(classifier_uncompiled_model)
+    test_metrics = standard_object.train_test_and_evaluate_classifier(
         classifier_compiled_model
     )
     return(test_metrics['categorical_accuracy'])
