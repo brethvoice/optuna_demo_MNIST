@@ -63,8 +63,7 @@ train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
 
-def process_machine(results_queue, trial):
-    # Instantiate base model
+def objective(trial):
     standard_object = PrunableEvaluateMNIST(
         train_images=train_images,
         test_images=test_images,
@@ -128,7 +127,7 @@ def process_machine(results_queue, trial):
     standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
     standard_object.split_training_data_for_training_and_validation()
 
-    # Use hyper-parameters at settings generated above
+    # Train and validate using hyper-parameters generated above
     clear_session()
     classifier_model = models.Sequential()
     classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
@@ -159,27 +158,14 @@ def process_machine(results_queue, trial):
         callbacks=standard_object.callbacks,
         batch_size=standard_object.batch_size,
     )
+    
+    # Evaluate on test data and report score to Optuna
     test_results = classifier_model.evaluate(
         standard_object.test_images,
         standard_object.test_labels,
         batch_size=standard_object.batch_size,
     )
     test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
-    results_queue.put(test_results)
-
-
-def objective(trial):
-    test_results_queue = Queue()
-    p = Process(
-        target=process_machine,
-        args=(test_results_queue, trial,),
-    )
-    p.daemon = False
-    p.start()
-    test_results = test_results_queue.get()
-    p.terminate()
-    flag = p.join()
-    print('\nProcess exited with code {}.\n\n'.format(str(flag)))
     return(test_results['categorical_accuracy'])
 
 
