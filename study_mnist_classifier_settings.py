@@ -112,10 +112,11 @@ def process_machine(results_queue):
         batch_size=base_model.batch_size,
     )
     test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
+    results_queue.put(test_results)
+    set_trace()
     take_out_trash()
     del classifier_model
-    
-    return(test_results)
+
 
 def objective(trial):
     base_model.number_hidden_conv_layers = trial.suggest_int(
@@ -179,6 +180,7 @@ def objective(trial):
     p.daemon = True
     p.start()
     test_results = test_results_queue.get()
+    set_trace()
     p.terminate()
     flag = p.join()
     print('\nProcess exited with code {}.\n\n'.format(flag))
