@@ -29,7 +29,7 @@ If you have `setGPU` installed, this line avoid having to tell Python which GPU 
 Implements median stopping rule pruner via `tf.keras` callback (a special "pruning hook" built by Optuna).This version also attempts to optimize the Adam settings, with a Beta(0.5, 0.5) Jeffreys prior for each of the `learning_rate`, `beta_1`, and `beta_2` parameters.
 
 **EvaluateMNIST.py**
-Not built for pruning; also sets Jeffreys priors for the Adam training optimizer hyper-parameters at instantiation.
+Intended for use with `simple_study_mnist_classifier_settings.py`. NB: Trials *are* prunable (need to figure out some better names).
 
 **PruneableEvaluateMNIST.py**
-Does the extra things `EvaluateMNIST.py` will not.
+Intended for use with `study_mnist_classifier_settings.py`.
