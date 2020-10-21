@@ -32,10 +32,9 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 100  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
 MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 14 * 3600  # 3600 seconds = one hour
-MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
-EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
+MAXIMUM_EPOCHS_TO_TRAIN = 200  # Each model will not train for more than this many epochs
+EARLY_STOPPING_PATIENCE_PARAMETER = int(0.2 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
-MAX_TIME_ESTIMATE_PER_TRIAL = 90 * 500
 
 # Establish MNIST-specific constants used in code below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
@@ -177,10 +176,12 @@ def objective(trial):
         target=process_machine,
         args=(test_results_queue,),
     )
+    p.daemon = True
     p.start()
-    flag = p.join(MAX_TIME_ESTIMATE_PER_TRIAL)
-    print('\nSubprocess exited with code {}.\n\n'.format(flag))
     test_results = test_results_queue.get()
+    p.terminate()
+    flag = p.join()
+    print('\nProcess exited with code {}.\n\n'.format(flag))
     return(test_results['categorical_accuracy'])
 
 
