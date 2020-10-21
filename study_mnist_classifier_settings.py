@@ -179,10 +179,10 @@ def objective(trial):
     p.daemon = True
     p.start()
     test_results = test_results_queue.get()
-    set_trace()
     p.terminate()
     flag = p.join()
-    print('\nProcess exited with code {}.\n\n'.format(flag))
+    print('\nProcess exited with code {}.\n\n'.format(str(flag)))
+    set_trace()
     return(test_results['categorical_accuracy'])
 
 
