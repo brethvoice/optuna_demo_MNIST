@@ -126,14 +126,14 @@ def objective(trial):
     base_model.split_training_data_for_training_and_validation()
     
     # Build, compile, evaluate, and delete model
-    working_model = models.Sequential()
-    working_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
-    working_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    classifier_model = models.Sequential()
+    classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+    classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     for level in range(base_model.number_hidden_conv_layers):
-        working_model.add(layers.Conv2D(4, (3, 3), activation=base_model.hidden_layers_activation_func))
-        working_model.add(layers.MaxPooling2D((2, 2), strides=2))
-    working_model.add(layers.Flatten())
-    working_model.add(layers.Dense(10, activation='softmax'))
+        classifier_model.add(layers.Conv2D(4, (3, 3), activation=base_model.hidden_layers_activation_func))
+        classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    classifier_model.add(layers.Flatten())
+    classifier_model.add(layers.Dense(10, activation='softmax'))
     base_model.optimizer = Adam(
         learning_rate=base_model.adam_learn_rate,
         beta_1=base_model.adam_beta_1,
@@ -141,13 +141,13 @@ def objective(trial):
         epsilon=epsilon(),
         amsgrad=base_model.adam_amsgrad_bool,
     )
-    working_model.compile(
+    classifier_model.compile(
         optimizer=base_model.optimizer,
         loss=CategoricalCrossentropy(),
         metrics=[CategoricalAccuracy()],
     )
     _, test_metrics = base_model.train_test_and_evaluate_classifier(
-        working_model
+        classifier_model
     )
     return(test_metrics['categorical_accuracy'])
 
