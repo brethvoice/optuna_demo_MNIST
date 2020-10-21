@@ -67,22 +67,3 @@ class PrunableEvaluateMNIST:
             verbose=self.verbosity,
         )
         self.callbacks.append(early_stopper)  # Append to callbacks list
-
-    def train_test_and_evaluate_classifier(self, model):  # Train model
-        history = model.fit(
-            self.train_split_images,
-            self.train_split_labels,
-            epochs=self.max_epochs,
-            validation_data=self.validate_split_data,
-            verbose=self.verbosity,
-            callbacks=self.callbacks,
-            batch_size=self.batch_size,
-        )
-        test_results = model.evaluate(
-            self.test_images,
-            self.test_labels,
-            batch_size=self.batch_size,
-        )
-        test_results = {out: test_results[i] for i, out in enumerate(model.metrics_names)}
-        validation_losses = history.history['val_loss']
-        return min(validation_losses), test_results

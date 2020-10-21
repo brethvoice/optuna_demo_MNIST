@@ -15,6 +15,7 @@ import optuna
 from numpy.random import default_rng as random_generator_instantiator
 from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
@@ -129,6 +130,7 @@ def objective(trial):
     base_model.split_training_data_for_training_and_validation()
     
     # Build, compile, evaluate, and delete model
+    clear_session()
     classifier_model = models.Sequential()
     classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
     classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))

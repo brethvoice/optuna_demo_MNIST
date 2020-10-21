@@ -89,6 +89,11 @@ def objective(trial):
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
     base_model.specify_early_stopper()
+    keras_pruner = optuna.integration.TFKerasPruningCallback(
+        trial,
+        'val_categorical_accuracy',
+    )
+    base_model.callbacks.append(keras_pruner)  # Append to callbacks list
     base_model.split_training_data_for_training_and_validation()
     clear_session()
     classifier_uncompiled_model = base_model.build_variable_depth_classifier()
@@ -105,6 +110,7 @@ sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING),
 )
 study.optimize(
     objective,
