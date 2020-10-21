@@ -73,9 +73,6 @@ base_model = PrunableEvaluateMNIST(
     max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
 )
 
-# Insantiate random number generator for use below
-rg = random_generator_instantiator()
-
 def objective(trial):
     base_model.number_hidden_conv_layers = trial.suggest_int(
         'number_hidden_conv_layers',
@@ -95,21 +92,27 @@ def objective(trial):
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    base_model.adam_learn_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    rg_learn_rate = random_generator_instantiator()
+    base_model.adam_learn_rate = rg_learn_rate.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_learn_rate',
         0,
         1,
     )
-    base_model.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    del rg_learn_rate
+    rg_beta_1 = random_generator_instantiator()
+    base_model.adam_beta_1 = rg_beta_1.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_beta_1',
         0,
         1,
     )
-    base_model.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    del rg_beta_1
+    rg_beta_2 = random_generator_instantiator()
+    base_model.adam_beta_2 = rg_beta_2.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_beta_2',
         0,
         1,
     )
+    del rg_beta_2
     base_model.adam_amsgrad_bool = trial.suggest_categorical(
         'adam_amsgrad_bool',
         [
