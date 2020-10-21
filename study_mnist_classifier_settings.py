@@ -19,7 +19,6 @@ from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
-from multiprocessing import Process, Queue
 from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
@@ -63,6 +62,7 @@ train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
 
+# This is what Optuna will optimize (minimize or maximize)
 def objective(trial):
     standard_object = PrunableEvaluateMNIST(
         train_images=train_images,
@@ -72,7 +72,6 @@ def objective(trial):
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
-        max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
     )
 
     # Instantiate a random number generator
@@ -92,8 +91,8 @@ def objective(trial):
             'softplus',
         ]
     )
-    standard_object.batch_size_power_of_two = trial.suggest_int(
-        'batch_size_power_of_two',
+    standard_object.batch_size_base_two_logarithm = trial.suggest_int(
+        'batch_size_base_two_logarithm',
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
@@ -119,13 +118,16 @@ def objective(trial):
             True,
         ]
     )
-    standard_object.specify_early_stopper()
+
+    # Add early stopping callback
+    standard_object.append_early_stopper_callback()
+
+    # Append tf.keras pruner for later use during study
     keras_pruner = optuna.integration.TFKerasPruningCallback(
         trial,
         'val_categorical_accuracy',
     )
     standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
-    standard_object.split_training_data_for_training_and_validation()
 
     # Train and validate using hyper-parameters generated above
     clear_session()
@@ -149,27 +151,29 @@ def objective(trial):
         loss=CategoricalCrossentropy(),
         metrics=[CategoricalAccuracy()],
     )
+    standard_object.set_batch_size(standard_object.batch_size_base_two_logarithm)
+    standard_object.stratified_split_for_training_and_validation()
     classifier_model.fit(
         standard_object.train_split_images,
         standard_object.train_split_labels,
-        epochs=standard_object.max_epochs,
+        epochs=MAXIMUM_EPOCHS_TO_TRAIN,
         validation_data=standard_object.validate_split_data,
-        verbose=standard_object.verbosity,
+        verbose=VERBOSITY_LEVEL_FOR_TENSORFLOW,
         callbacks=standard_object.callbacks,
         batch_size=standard_object.batch_size,
     )
-    
-    # Evaluate on test data and report score to Optuna
-    test_results = classifier_model.evaluate(
+
+    # Evaluate performance on test data and report score
+    test_metrics = classifier_model.evaluate(
         standard_object.test_images,
         standard_object.test_labels,
         batch_size=standard_object.batch_size,
     )
-    test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
-    return(test_results['categorical_accuracy'])
+    test_results_dict = {out: test_metrics[i] for i, out in enumerate(classifier_model.metrics_names)}
+    return(test_results_dict['categorical_accuracy'])
 
 
-# Create and run the study
+# Create and run Optuna study
 sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
@@ -185,15 +189,15 @@ study.optimize(
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
     )
+set_trace()  # Before taking any more steps, pause execution
 
-# Report out on study results:
+# Report completed study results:
 print('Study statistics:  ')
 print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
 print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
 print('\n\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
-set_trace()  # Before taking any more steps, pause execution
 completed_trials = [
     t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
 ]
@@ -202,5 +206,7 @@ pruned_trials = [
     t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
 ]
 print('Number of pruned trials is {}'.format(len(pruned_trials)))
+
+# This does not work on DGX currently, but also does not throw error
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()

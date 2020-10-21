@@ -11,7 +11,7 @@ import ssl
 from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.backend import clear_session
-from numpy import log2, floor, zeros, mean
+from numpy import log2, floor
 import optuna
 
 from pdb import set_trace
@@ -64,8 +64,6 @@ standard_object = EvaluateMNIST(
     test_labels=test_labels,
     validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
     early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
-    verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
-    max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
 )
 
 
@@ -83,34 +81,52 @@ def objective(trial):
             'softplus',
         ]
     )
-    standard_object.batch_size_power_of_two = trial.suggest_int(
-        'batch_size_power_of_two',
+    standard_object.batch_size_base_two_logarithm = trial.suggest_int(
+        'batch_size_base_two_logarithm',
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    standard_object.specify_early_stopper()
+    standard_object.append_early_stopper_callback()
     keras_pruner = optuna.integration.TFKerasPruningCallback(
         trial,
         'val_categorical_accuracy',
     )
     standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
-    standard_object.split_training_data_for_training_and_validation()
+    standard_object.stratified_split_for_training_and_validation()
     clear_session()
     classifier_uncompiled_model = standard_object.build_variable_depth_classifier()
     standard_object.optimizer = 'adam'
     classifier_compiled_model = standard_object.compile_classifier(classifier_uncompiled_model)
-    test_metrics = standard_object.train_test_and_evaluate_classifier(
-        classifier_compiled_model
+    standard_object.set_batch_size(standard_object.batch_size_base_two_logarithm)
+
+    # Train and validate using hyper-parameters generated above, then evaluate on test data and report score
+    classifier_compiled_model.fit(
+        standard_object.train_split_images,
+        standard_object.train_split_labels,
+        epochs=MAXIMUM_EPOCHS_TO_TRAIN,
+        validation_data=standard_object.validate_split_data,
+        verbose=standard_object.verbosity,
+        callbacks=standard_object.callbacks,
+        batch_size=standard_object.batch_size,
     )
-    return(test_metrics['categorical_accuracy'])
+    test_metrics = classifier_compiled_model.evaluate(
+        standard_object.test_images,
+        standard_object.test_labels,
+        batch_size=standard_object.batch_size,
+    )
+    test_results_dict = {out: test_metrics[i] for i, out in enumerate(classifier_compiled_model.metrics_names)}
+    return(test_results_dict['categorical_accuracy'])
 
 
-# Create and run the study
+# Create and run Optuna study
 sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
-    pruner=optuna.pruners.MedianPruner(n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING),
+    pruner=optuna.pruners.MedianPruner(
+        n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING,
+        n_warmup_steps=EARLY_STOPPING_PATIENCE_PARAMETER,
+    ),
 )
 study.optimize(
     objective,
@@ -120,7 +136,7 @@ study.optimize(
     )
 set_trace()  # Before taking any more steps, pause execution
 
-# Report out on study results:
+# Report completed study results:
 print('Study statistics:  ')
 print('Number of trials was {}'.format(len(study.trials)))
 print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
@@ -128,5 +144,7 @@ print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.valu
 print('\n\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
+
+# This does not work on DGX currently, but also does not throw error
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()
