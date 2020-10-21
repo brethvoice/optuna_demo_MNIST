@@ -13,7 +13,6 @@ from numpy import min
 
 
 class PrunableEvaluateMNIST:
-    __instance__ = None
 
     def __init__(
         self,
@@ -33,21 +32,17 @@ class PrunableEvaluateMNIST:
         max_epochs=100,
         batch_size_power_of_two=4,
     ):
-        if PrunableEvaluateMNIST.__instance__ is None:
-            self.train_images = train_images
-            self.test_images = test_images
-            self.train_labels = train_labels
-            self.test_labels = test_labels
-            self.validation_data_proportion = validation_data_proportion
-            self.callbacks = []  # Empty list to which one may append any number of callbacks
-            self.early_stopping_patience = early_stopping_patience
-            self.verbosity = verbosity  # 1, 2, or 3 (2)
-            self.max_epochs = max_epochs  # 1 to 500 (50)
-            self.batch_size = 2 ** batch_size_power_of_two  # powers of 2 (2**5=32)
+        self.train_images = train_images
+        self.test_images = test_images
+        self.train_labels = train_labels
+        self.test_labels = test_labels
+        self.validation_data_proportion = validation_data_proportion
+        self.callbacks = []  # Empty list to which one may append any number of callbacks
+        self.early_stopping_patience = early_stopping_patience
+        self.verbosity = verbosity  # 1, 2, or 3 (2)
+        self.max_epochs = max_epochs  # 1 to 500 (50)
+        self.batch_size = 2 ** batch_size_power_of_two  # powers of 2 (2**5=32)
 
-            PrunableEvaluateMNIST.__instance__ = self
-        else:
-            raise Exception("This is a singleton; PrunableEvaluateMNIST has already been created.")
 
     def split_training_data_for_training_and_validation(self):
         instance_of_random_state = RandomState()

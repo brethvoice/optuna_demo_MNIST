@@ -17,7 +17,6 @@ from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
-from gc import collect as take_out_trash
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
 from multiprocessing import Process, Queue
@@ -63,71 +62,30 @@ test_images = test_images.reshape((10000, 28, 28, 1))
 train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
-# Instantiate base model outside of objective function
-base_model = PrunableEvaluateMNIST(
-    train_images=train_images,
-    test_images=test_images,
-    train_labels=train_labels,
-    test_labels=test_labels,
-    validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
-    early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
-    verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
-    max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
-)
 
-# Instantiate a random number generator to use throughout study
-rg = random_generator_instantiator()
-
-
-def process_machine(results_queue):
-    clear_session()
-    classifier_model = models.Sequential()
-    classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
-    classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
-    for level in range(base_model.number_hidden_conv_layers):
-        classifier_model.add(layers.Conv2D(4, (3, 3), activation=base_model.hidden_layers_activation_func))
-        classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
-    classifier_model.add(layers.Flatten())
-    classifier_model.add(layers.Dense(10, activation='softmax'))
-    base_model.optimizer = Adam(
-        learning_rate=base_model.adam_learn_rate,
-        beta_1=base_model.adam_beta_1,
-        beta_2=base_model.adam_beta_2,
-        epsilon=epsilon(),
-        amsgrad=base_model.adam_amsgrad_bool,
+def process_machine(results_queue, trial):
+    # Instantiate base model
+    standard_object = PrunableEvaluateMNIST(
+        train_images=train_images,
+        test_images=test_images,
+        train_labels=train_labels,
+        test_labels=test_labels,
+        validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
+        early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
+        verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
+        max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
     )
-    classifier_model.compile(
-        optimizer=base_model.optimizer,
-        loss=CategoricalCrossentropy(),
-        metrics=[CategoricalAccuracy()],
-    )
-    classifier_model.fit(
-        base_model.train_split_images,
-        base_model.train_split_labels,
-        epochs=base_model.max_epochs,
-        validation_data=base_model.validate_split_data,
-        verbose=base_model.verbosity,
-        callbacks=base_model.callbacks,
-        batch_size=base_model.batch_size,
-    )
-    test_results = classifier_model.evaluate(
-        base_model.test_images,
-        base_model.test_labels,
-        batch_size=base_model.batch_size,
-    )
-    test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
-    results_queue.put(test_results)
-    take_out_trash()
-    del classifier_model
 
+    # Instantiate a random number generator
+    rg = random_generator_instantiator()
 
-def objective(trial):
-    base_model.number_hidden_conv_layers = trial.suggest_int(
+    # Generate hyper-parameters
+    standard_object.number_hidden_conv_layers = trial.suggest_int(
         'number_hidden_conv_layers',
         0,
         2,
     )
-    base_model.hidden_layers_activation_func = trial.suggest_categorical(
+    standard_object.hidden_layers_activation_func = trial.suggest_categorical(
         'hidden_layers_activation_func',
         [
             'relu',
@@ -135,44 +93,86 @@ def objective(trial):
             'softplus',
         ]
     )
-    base_model.batch_size_power_of_two = trial.suggest_int(
+    standard_object.batch_size_power_of_two = trial.suggest_int(
         'batch_size_power_of_two',
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    base_model.adam_learn_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    standard_object.adam_learn_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_learn_rate',
         0,
         1,
     )
-    base_model.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    standard_object.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_beta_1',
         0,
         1,
     )
-    base_model.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    standard_object.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_beta_2',
         0,
         1,
     )
-    base_model.adam_amsgrad_bool = trial.suggest_categorical(
+    standard_object.adam_amsgrad_bool = trial.suggest_categorical(
         'adam_amsgrad_bool',
         [
             False,
             True,
         ]
     )
-    base_model.specify_early_stopper()
+    standard_object.specify_early_stopper()
     keras_pruner = optuna.integration.TFKerasPruningCallback(
         trial,
         'val_categorical_accuracy',
     )
-    base_model.callbacks.append(keras_pruner)  # Append to callbacks list
-    base_model.split_training_data_for_training_and_validation()
+    standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
+    standard_object.split_training_data_for_training_and_validation()
+
+    # Use hyper-parameters at settings generated above
+    clear_session()
+    classifier_model = models.Sequential()
+    classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+    classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    for level in range(standard_object.number_hidden_conv_layers):
+        classifier_model.add(layers.Conv2D(4, (3, 3), activation=standard_object.hidden_layers_activation_func))
+        classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    classifier_model.add(layers.Flatten())
+    classifier_model.add(layers.Dense(10, activation='softmax'))
+    standard_object.optimizer = Adam(
+        learning_rate=standard_object.adam_learn_rate,
+        beta_1=standard_object.adam_beta_1,
+        beta_2=standard_object.adam_beta_2,
+        epsilon=epsilon(),
+        amsgrad=standard_object.adam_amsgrad_bool,
+    )
+    classifier_model.compile(
+        optimizer=standard_object.optimizer,
+        loss=CategoricalCrossentropy(),
+        metrics=[CategoricalAccuracy()],
+    )
+    classifier_model.fit(
+        standard_object.train_split_images,
+        standard_object.train_split_labels,
+        epochs=standard_object.max_epochs,
+        validation_data=standard_object.validate_split_data,
+        verbose=standard_object.verbosity,
+        callbacks=standard_object.callbacks,
+        batch_size=standard_object.batch_size,
+    )
+    test_results = classifier_model.evaluate(
+        standard_object.test_images,
+        standard_object.test_labels,
+        batch_size=standard_object.batch_size,
+    )
+    test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
+    results_queue.put(test_results)
+
+
+def objective(trial):
     test_results_queue = Queue()
     p = Process(
         target=process_machine,
-        args=(test_results_queue,),
+        args=(test_results_queue, trial,),
     )
     p.daemon = False
     p.start()
