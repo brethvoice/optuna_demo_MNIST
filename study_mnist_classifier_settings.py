@@ -146,9 +146,21 @@ def objective(trial):
         loss=CategoricalCrossentropy(),
         metrics=[CategoricalAccuracy()],
     )
-    _, test_metrics = base_model.train_test_and_evaluate_classifier(
-        classifier_model
+    classifier_model.fit(
+        base_model.train_split_images,
+        base_model.train_split_labels,
+        epochs=base_model.max_epochs,
+        validation_data=base_model.validate_split_data,
+        verbose=base_model.verbosity,
+        callbacks=base_model.callbacks,
+        batch_size=base_model.batch_size,
     )
+    test_results = classifier_model.evaluate(
+        base_model.test_images,
+        base_model.test_labels,
+        batch_size=base_model.batch_size,
+    )
+    test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
     return(test_metrics['categorical_accuracy'])
 
 
