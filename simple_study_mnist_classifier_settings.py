@@ -10,6 +10,7 @@ import ssl
 
 from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.backend import clear_session
 from numpy import log2, floor, zeros, mean
 import optuna
 
@@ -89,6 +90,7 @@ def objective(trial):
     )
     base_model.specify_early_stopper()
     base_model.split_training_data_for_training_and_validation()
+    clear_session()
     classifier_uncompiled_model = base_model.build_variable_depth_classifier()
     base_model.optimizer = 'adam'
     classifier_compiled_model = base_model.compile_classifier(classifier_uncompiled_model)
