@@ -161,7 +161,7 @@ def objective(trial):
         batch_size=base_model.batch_size,
     )
     test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
-    return(test_metrics['categorical_accuracy'])
+    return(test_results['categorical_accuracy'])
 
 
 # Create and run the study
