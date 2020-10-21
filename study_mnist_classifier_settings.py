@@ -29,9 +29,9 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 100  # For the Optuna study itself
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 14 * 3600  # 3600 seconds = one hour
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 200  # Each model will not train for more than this many epochs
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.2 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
@@ -74,6 +74,10 @@ base_model = PrunableEvaluateMNIST(
     verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
     max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
 )
+
+# Instantiate a random number generator to use throughout study
+rg = random_generator_instantiator()
+
 
 def process_machine(results_queue):
     clear_session()
@@ -136,27 +140,21 @@ def objective(trial):
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    rg_learn_rate = random_generator_instantiator()
-    base_model.adam_learn_rate = rg_learn_rate.beta(0.5, 0.5) * trial.suggest_uniform(
+    base_model.adam_learn_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_learn_rate',
         0,
         1,
     )
-    del rg_learn_rate
-    rg_beta_1 = random_generator_instantiator()
-    base_model.adam_beta_1 = rg_beta_1.beta(0.5, 0.5) * trial.suggest_uniform(
+    base_model.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_beta_1',
         0,
         1,
     )
-    del rg_beta_1
-    rg_beta_2 = random_generator_instantiator()
-    base_model.adam_beta_2 = rg_beta_2.beta(0.5, 0.5) * trial.suggest_uniform(
+    base_model.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
         'adam_beta_2',
         0,
         1,
     )
-    del rg_beta_2
     base_model.adam_amsgrad_bool = trial.suggest_categorical(
         'adam_amsgrad_bool',
         [
@@ -176,13 +174,12 @@ def objective(trial):
         target=process_machine,
         args=(test_results_queue,),
     )
-    p.daemon = True
+    p.daemon = False
     p.start()
     test_results = test_results_queue.get()
     p.terminate()
     flag = p.join()
     print('\nProcess exited with code {}.\n\n'.format(str(flag)))
-    set_trace()
     return(test_results['categorical_accuracy'])
 
 
