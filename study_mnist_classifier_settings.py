@@ -113,7 +113,6 @@ def process_machine(results_queue):
     )
     test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
     results_queue.put(test_results)
-    set_trace()
     take_out_trash()
     del classifier_model
 
