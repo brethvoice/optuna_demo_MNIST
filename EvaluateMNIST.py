@@ -12,6 +12,7 @@ from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.callbacks import EarlyStopping
+from gc import collect as take_out_trash
 from numpy import min
 
 
@@ -100,5 +101,6 @@ class EvaluateMNIST:
             batch_size=self.batch_size,
         )
         test_results = {out: test_results[i] for i, out in enumerate(model.metrics_names)}
+        take_out_trash()
         del model
         return test_results

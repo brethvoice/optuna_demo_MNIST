@@ -17,9 +17,10 @@ from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
+from gc import collect as take_out_trash
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
-
+from multiprocessing import Process, Queue
 from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
@@ -34,6 +35,7 @@ MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 14 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
+MAX_TIME_ESTIMATE_PER_TRIAL = 90 * 500
 
 # Establish MNIST-specific constants used in code below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
@@ -73,6 +75,48 @@ base_model = PrunableEvaluateMNIST(
     verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
     max_epochs=MAXIMUM_EPOCHS_TO_TRAIN,
 )
+
+def process_machine(results_queue):
+    clear_session()
+    classifier_model = models.Sequential()
+    classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+    classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    for level in range(base_model.number_hidden_conv_layers):
+        classifier_model.add(layers.Conv2D(4, (3, 3), activation=base_model.hidden_layers_activation_func))
+        classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    classifier_model.add(layers.Flatten())
+    classifier_model.add(layers.Dense(10, activation='softmax'))
+    base_model.optimizer = Adam(
+        learning_rate=base_model.adam_learn_rate,
+        beta_1=base_model.adam_beta_1,
+        beta_2=base_model.adam_beta_2,
+        epsilon=epsilon(),
+        amsgrad=base_model.adam_amsgrad_bool,
+    )
+    classifier_model.compile(
+        optimizer=base_model.optimizer,
+        loss=CategoricalCrossentropy(),
+        metrics=[CategoricalAccuracy()],
+    )
+    classifier_model.fit(
+        base_model.train_split_images,
+        base_model.train_split_labels,
+        epochs=base_model.max_epochs,
+        validation_data=base_model.validate_split_data,
+        verbose=base_model.verbosity,
+        callbacks=base_model.callbacks,
+        batch_size=base_model.batch_size,
+    )
+    test_results = classifier_model.evaluate(
+        base_model.test_images,
+        base_model.test_labels,
+        batch_size=base_model.batch_size,
+    )
+    test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
+    take_out_trash()
+    del classifier_model
+    
+    return(test_results)
 
 def objective(trial):
     base_model.number_hidden_conv_layers = trial.suggest_int(
@@ -128,45 +172,15 @@ def objective(trial):
     )
     base_model.callbacks.append(keras_pruner)  # Append to callbacks list
     base_model.split_training_data_for_training_and_validation()
-    
-    # Build, compile, evaluate, and delete model
-    clear_session()
-    classifier_model = models.Sequential()
-    classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
-    classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
-    for level in range(base_model.number_hidden_conv_layers):
-        classifier_model.add(layers.Conv2D(4, (3, 3), activation=base_model.hidden_layers_activation_func))
-        classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
-    classifier_model.add(layers.Flatten())
-    classifier_model.add(layers.Dense(10, activation='softmax'))
-    base_model.optimizer = Adam(
-        learning_rate=base_model.adam_learn_rate,
-        beta_1=base_model.adam_beta_1,
-        beta_2=base_model.adam_beta_2,
-        epsilon=epsilon(),
-        amsgrad=base_model.adam_amsgrad_bool,
+    test_results_queue = Queue()
+    p = Process(
+        target=process_machine,
+        args=(test_results_queue,),
     )
-    classifier_model.compile(
-        optimizer=base_model.optimizer,
-        loss=CategoricalCrossentropy(),
-        metrics=[CategoricalAccuracy()],
-    )
-    classifier_model.fit(
-        base_model.train_split_images,
-        base_model.train_split_labels,
-        epochs=base_model.max_epochs,
-        validation_data=base_model.validate_split_data,
-        verbose=base_model.verbosity,
-        callbacks=base_model.callbacks,
-        batch_size=base_model.batch_size,
-    )
-    test_results = classifier_model.evaluate(
-        base_model.test_images,
-        base_model.test_labels,
-        batch_size=base_model.batch_size,
-    )
-    test_results = {out: test_results[i] for i, out in enumerate(classifier_model.metrics_names)}
-    del classifier_model
+    p.start()
+    flag = p.join(MAX_TIME_ESTIMATE_PER_TRIAL)
+    print('\nSubprocess exited with code {}.\n\n'.format(flag))
+    test_results = test_results_queue.get()
     return(test_results['categorical_accuracy'])
 
 
