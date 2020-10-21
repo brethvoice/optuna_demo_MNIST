@@ -85,7 +85,7 @@ class EvaluateMNIST:
         return model
 
     def train_test_and_evaluate_classifier(self, model):  # Train model, then test and report on performance
-        history = model.fit(
+        model.fit(
             self.train_split_images,
             self.train_split_labels,
             epochs=self.max_epochs,
@@ -100,5 +100,5 @@ class EvaluateMNIST:
             batch_size=self.batch_size,
         )
         test_results = {out: test_results[i] for i, out in enumerate(model.metrics_names)}
-        validation_losses = history.history['val_loss']
-        return min(validation_losses), test_results
+        del model
+        return test_results

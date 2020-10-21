@@ -92,7 +92,7 @@ def objective(trial):
     classifier_uncompiled_model = base_model.build_variable_depth_classifier()
     base_model.optimizer = 'adam'
     classifier_compiled_model = base_model.compile_classifier(classifier_uncompiled_model)
-    _, test_metrics = base_model.train_test_and_evaluate_classifier(
+    test_metrics = base_model.train_test_and_evaluate_classifier(
         classifier_compiled_model
     )
     return(test_metrics['categorical_accuracy'])
