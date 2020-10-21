@@ -174,7 +174,10 @@ sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
-    pruner=optuna.pruners.MedianPruner(n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING),
+    pruner=optuna.pruners.MedianPruner(
+        n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING,
+        n_warmup_steps=EARLY_STOPPING_PATIENCE_PARAMETER,
+    ),
 )
 study.optimize(
     objective,
