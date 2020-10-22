@@ -12,9 +12,15 @@ import plotly
 
 From the command line:
 
+```
 CUDA_VISIBLE_DEVICES="0", python3 study_mnist_classifier_settings.py
+```
 
-or if you want to use more than one GPU, use whichever you want (for example, if you have two GPUs and want to use the second, that is device 1).
+or if you want to use more than one GPU/a different one besides 0, use whichever you want (for example, if you have two GPUs and want to use the second, that is device 1).
+
+NOTE:  `simple_study_mnist_classifier_settings.py` currently does not complete more than two or three trials.  I have submitted a bug report to Optuna to see why instantiating the standard object (`EvaluateMNIST` class) causes this behavior.  For now, `PrunableEvaluateMNIST` is the one to use with the study, although technically both of them are now prunable (I need to rename once I think of something better), until this issue is resolved:
+
+https://github.com/optuna/optuna/issues/1946
 
 The script has a commented-out import statement which will automatically choose a single GPU that is least utilized so you do not need to set this parameter:
 
