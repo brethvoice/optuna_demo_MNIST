@@ -11,7 +11,7 @@ from numpy.random import RandomState
 from tensorflow.keras.callbacks import EarlyStopping
 
 
-class PrunableEvaluateMNIST:
+class PrunableEvaluateMNIST(object):
 
     def __init__(
         self,

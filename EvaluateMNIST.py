@@ -14,7 +14,7 @@ from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.callbacks import EarlyStopping
 
 
-class EvaluateMNIST:
+class EvaluateMNIST(object):
     __instance__ = None  # Necessary for singleton class
 
     def __init__(
