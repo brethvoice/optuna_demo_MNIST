@@ -1,6 +1,6 @@
 # How to run demo
 
-NB: each of the following files is set to run over a 12-hour period as written; recommend changing timeout settings and/or number of trials for Optuna study if that is too long.
+Change your timeout settings and/or number of trials for Optuna study before running.
 
 **study_mnist_classifier_settings.py** : 
 If using a docker, test the following commands first and make sure they run; if they do not then install `plotly` and `optuna`:
