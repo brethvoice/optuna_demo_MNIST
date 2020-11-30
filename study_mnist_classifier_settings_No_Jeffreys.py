@@ -20,7 +20,7 @@ from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
-# from pdb import set_trace
+from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
@@ -253,7 +253,8 @@ pruned_trials = [
     t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
 ]
 print('Number of pruned trials is {}'.format(len(pruned_trials)))
+set_trace()
 
-# This does not work on DGX currently, but also does not throw error
-fig = optuna.visualization.plot_param_importances(study)
-fig.show()
+# This does not work for some reason
+# fig = optuna.visualization.plot_param_importances(study)
+# fig.show()
