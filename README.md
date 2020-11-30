@@ -29,3 +29,7 @@ If you have `setGPU` installed, this line avoid having to tell Python which GPU 
 
 **PruneableEvaluateMNIST.py**
 Intended for use with `study_mnist_classifier_settings.py`.
+
+# UPDATE
+
+Added experimental code to compare performance of Jeffreys prior for uniformly distributed hyper-parameters.
