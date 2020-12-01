@@ -23,7 +23,7 @@ from adabelief_tf import AdaBeliefOptimizer
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
-# import setGPU  # Find and make visible the GPU with least memory allocated
+#import setGPU  # Find and make visible the GPU with least memory allocated
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
@@ -125,13 +125,6 @@ def objective(trial):
         0,
         1,
     )
-    standard_object.adam_amsgrad_bool = trial.suggest_categorical(
-        'adam_amsgrad_bool',
-        [
-            False,
-            True,
-        ]
-    )
 
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
@@ -168,7 +161,7 @@ def objective(trial):
         beta_2=standard_object.adam_beta_2,
         epsilon=epsilon(),
         rectify=False,  # to compare with Adam (unrectified)
-        amsgrad=standard_object.adam_amsgrad_bool,
+        amsgrad=False,  # this was just another attempt to make Adam converge
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,
