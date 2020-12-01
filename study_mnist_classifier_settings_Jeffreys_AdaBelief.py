@@ -111,7 +111,7 @@ def objective(trial):
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
     standard_object.adam_learning_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-        'adam_learning_rate_initial',
+        'adam_learning_rate',
         0,
         2,
     )
