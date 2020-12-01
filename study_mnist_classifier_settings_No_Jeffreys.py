@@ -14,7 +14,6 @@ from numpy import log2, floor
 import optuna
 # from numpy.random import default_rng as random_generator_instantiator
 from tensorflow.keras.backend import epsilon
-from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
@@ -111,8 +110,8 @@ def objective(trial):
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    standard_object.adam_learning_rate_initial = trial.suggest_uniform(
-        'adam_learning_rate_initial',
+    standard_object.adam_learning_rate = trial.suggest_uniform(
+        'adam_learning_rate',
         0,
         2,
     )
@@ -180,18 +179,12 @@ def objective(trial):
         classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     classifier_model.add(layers.Flatten())
     classifier_model.add(layers.Dense(10, activation='softmax'))
-    adam_learn_rate_schedule = ExponentialDecay(
-        initial_learning_rate=standard_object.adam_learning_rate_initial,
-        decay_steps=standard_object.adam_learning_rate_decay_steps,
-        decay_rate=standard_object.adam_learning_rate_decay_rate,
-        staircase=standard_object.adam_learning_rate_staircase,
-    )
     standard_object.optimizer = Adam(
-        learning_rate=adam_learn_rate_schedule,
+        learning_rate=standard_object.adam_learning_rate,
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=epsilon(),
-        amsgrad=standard_object.adam_amsgrad_bool,
+        amsgrad=False,
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,
