@@ -32,4 +32,4 @@ Intended for use with `study_mnist_classifier_settings.py`.
 
 # UPDATE
 
-Added experimental code to compare performance of Jeffreys prior for uniformly distributed hyper-parameters.  The head to head matchup of using Jeffreys priors or not was with Adam as the optimizer and a learning rate schedule.  I am currently running the code with AdaBelief and no learning rate schedule to see if I can beat Adam; if I do, I will re-match Jeffreys priors and without using AdaBelief.
+Added experimental code to compare performance of Jeffreys prior for uniformly distributed hyper-parameters.  The head to head matchup of using Jeffreys priors or not was with Adam as the optimizer and a learning rate schedule (currently re-running the experiment without a learning rate schedule and also without implementing amsgrad).  I am currently running the code with AdaBelief and no learning rate schedule to see if I can beat Adam; if I do, I will re-match Jeffreys priors vs without using AdaBelief.
