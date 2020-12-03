@@ -115,23 +115,6 @@ def objective(trial):
         0,
         2,
     )
-    standard_object.adam_learning_rate_decay_steps = trial.suggest_int(
-        'adam_learning_rate_decay_steps',
-        1,
-        2**MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
-    )
-    standard_object.adam_learning_rate_decay_rate = trial.suggest_uniform(
-        'adam_learning_rate_decay_rate',
-        0,
-        1,
-    )
-    standard_object.adam_learning_rate_staircase = trial.suggest_categorical(
-        'adam_learning_rate_staircase',
-        [
-            False,
-            True,
-        ]
-    )
     standard_object.adam_beta_1 = trial.suggest_uniform(
         'adam_beta_1',
         0,
@@ -141,13 +124,6 @@ def objective(trial):
         'adam_beta_2',
         0,
         1,
-    )
-    standard_object.adam_amsgrad_bool = trial.suggest_categorical(
-        'adam_amsgrad_bool',
-        [
-            False,
-            True,
-        ]
     )
 
     # Add early stopping callback

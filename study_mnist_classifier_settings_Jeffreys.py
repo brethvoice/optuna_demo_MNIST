@@ -125,13 +125,6 @@ def objective(trial):
         0,
         1,
     )
-    standard_object.adam_amsgrad_bool = trial.suggest_categorical(
-        'adam_amsgrad_bool',
-        [
-            False,
-            True,
-        ]
-    )
 
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
