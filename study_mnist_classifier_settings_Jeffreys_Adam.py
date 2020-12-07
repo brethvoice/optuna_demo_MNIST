@@ -14,12 +14,12 @@ from numpy import log2, floor
 import optuna
 from numpy.random import default_rng as random_generator_instantiator
 from tensorflow.keras.backend import epsilon
+from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
 from pdb import set_trace
-from adabelief_tf import AdaBeliefOptimizer
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
@@ -164,13 +164,12 @@ def objective(trial):
         classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     classifier_model.add(layers.Flatten())
     classifier_model.add(layers.Dense(10, activation='softmax'))
-    standard_object.optimizer = AdaBeliefOptimizer(
+    standard_object.optimizer = Adam(
         learning_rate=standard_object.adam_learning_rate,
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=epsilon(),
-        rectify=False,  # to compare with Adam (unrectified)
-        amsgrad=False,  # this was just another attempt to make Adam converge
+        amsgrad=False,
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,

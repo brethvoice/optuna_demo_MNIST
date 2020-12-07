@@ -47,9 +47,14 @@ class PrunableEvaluateMNIST(object):
         )
         self.validate_split_data = (validate_split_images, validate_split_labels)
 
-    def append_early_stopper_callback(self):  # Implement patience parameter for early stopping
+    def append_early_stopper_callback(self):  # Implement patience for early stopping
         early_stopper = EarlyStopping(
+            monitor='val_loss',
+            min_delta=0.0001,
             patience=self.early_stopping_patience,
             verbose=self.verbosity,
+            mode='auto',
+            baseline=None,
+            restore_best_weights=True,
         )
         self.callbacks.append(early_stopper)  # Append to callbacks list

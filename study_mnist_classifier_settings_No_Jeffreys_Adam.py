@@ -12,14 +12,14 @@ from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
 from numpy import log2, floor
 import optuna
-from numpy.random import default_rng as random_generator_instantiator
+# from numpy.random import default_rng as random_generator_instantiator
 from tensorflow.keras.backend import epsilon
+from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
 from pdb import set_trace
-from adabelief_tf import AdaBeliefOptimizer
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
@@ -73,7 +73,7 @@ def objective(trial):
     )
 
     # Instantiate a random number generator
-    rg = random_generator_instantiator()
+    # rg = random_generator_instantiator()
 
     # Generate hyper-parameters
     standard_object.number_of_conv_2d_filters = trial.suggest_int(
@@ -109,38 +109,21 @@ def objective(trial):
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    if trial.number == 0:
-        standard_object.adam_learning_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-            'adam_learning_rate',
-            0,
-            2,
-        )
-        standard_object.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-            'adam_beta_1',
-            0,
-            1,
-        )
-        standard_object.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-            'adam_beta_2',
-            0,
-            1,
-        )
-    else:
-        standard_object.adam_learning_rate = trial.suggest_uniform(
-            'adam_learning_rate',
-            0,
-            2,
-        )
-        standard_object.adam_beta_1 = trial.suggest_uniform(
-            'adam_beta_1',
-            0,
-            1,
-        )
-        standard_object.adam_beta_2 = trial.suggest_uniform(
-            'adam_beta_2',
-            0,
-            1,
-        )
+    standard_object.adam_learning_rate = trial.suggest_uniform(
+        'adam_learning_rate',
+        0,
+        2,
+    )
+    standard_object.adam_beta_1 = trial.suggest_uniform(
+        'adam_beta_1',
+        0,
+        1,
+    )
+    standard_object.adam_beta_2 = trial.suggest_uniform(
+        'adam_beta_2',
+        0,
+        1,
+    )
 
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
@@ -164,13 +147,12 @@ def objective(trial):
         classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     classifier_model.add(layers.Flatten())
     classifier_model.add(layers.Dense(10, activation='softmax'))
-    standard_object.optimizer = AdaBeliefOptimizer(
+    standard_object.optimizer = Adam(
         learning_rate=standard_object.adam_learning_rate,
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=epsilon(),
-        rectify=False,  # to compare with Adam (unrectified)
-        amsgrad=False,  # this was just another attempt to make Adam converge
+        amsgrad=False,
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,

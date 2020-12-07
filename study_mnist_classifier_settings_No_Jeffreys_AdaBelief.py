@@ -23,12 +23,11 @@ from adabelief_tf import AdaBeliefOptimizer
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
-import setGPU  # Find and make visible the GPU with least memory allocated
+# import setGPU  # Find and make visible the GPU with least memory allocated
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
-NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 96 * 3600  # 3600 seconds = one hour
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 4 * 86400  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
@@ -110,17 +109,17 @@ def objective(trial):
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    standard_object.adam_learning_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    standard_object.adam_learning_rate = trial.suggest_uniform(
         'adam_learning_rate',
         0,
         2,
     )
-    standard_object.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    standard_object.adam_beta_1 = trial.suggest_uniform(
         'adam_beta_1',
         0,
         1,
     )
-    standard_object.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+    standard_object.adam_beta_2 = trial.suggest_uniform(
         'adam_beta_2',
         0,
         1,
@@ -128,13 +127,6 @@ def objective(trial):
 
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
-
-    # Append tf.keras pruner for later use during study
-    keras_pruner = optuna.integration.TFKerasPruningCallback(
-        trial,
-        'val_categorical_accuracy',
-    )
-    standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
 
     # Train and validate using hyper-parameters generated above
     clear_session()
@@ -196,10 +188,6 @@ sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
-    pruner=optuna.pruners.MedianPruner(
-        n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING,
-        n_warmup_steps=EARLY_STOPPING_PATIENCE_PARAMETER,
-    ),
 )
 study.optimize(
     objective,
