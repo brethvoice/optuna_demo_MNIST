@@ -25,12 +25,13 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
 # import setGPU  # Find and make visible the GPU with least memory allocated
 
-
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 10  # For the Optuna study itself
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 18 * 3600  # 3600 seconds = one hour
 NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 1 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+WARMUP_EPOCHS_BEFORE_PRUNING = int(0.2 * MAXIMUM_EPOCHS_TO_TRAIN)
+PERCENTILE_FOR_PRUNING = 99.0
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 
@@ -54,7 +55,7 @@ train_images = train_images / 255.0
 test_images = test_images / 255.0
 
 # Reshape images
-train_images = train_images.reshape((60000, 28, 28, 1))
+train_images = train_images.reshape((MNIST_TRAINING_AND_VALIDATION_SET_SIZE, 28, 28, 1))
 test_images = test_images.reshape((10000, 28, 28, 1))
 
 # One-hot encode labels
@@ -78,39 +79,82 @@ def objective(trial):
     rg = random_generator_instantiator()
 
     # Generate hyper-parameters
-    standard_object.number_hidden_conv_layers = trial.suggest_int(
-        'number_hidden_conv_layers',
-        0,
+    standard_object.number_of_conv_2d_filters = trial.suggest_int(
+        'number_of_conv_2d_filters',
+        4,
+        8,
+    )
+    standard_object.first_conv2d_kernel_dim = trial.suggest_int(
+        'first_conv2d_kernel_dim',
+        1,
         2,
     )
-    standard_object.hidden_layers_activation_func = trial.suggest_categorical(
-        'hidden_layers_activation_func',
+    standard_object.second_conv2d_kernel_dim = trial.suggest_int(
+        'second_conv2d_kernel_dim',
+        1,
+        2,
+    )
+    standard_object.conv2d_layers_activation_func = trial.suggest_categorical(
+        'conv2d_layers_activation_func',
         [
             'relu',
             'sigmoid',
             'softplus',
         ]
     )
+    standard_object.number_hidden_conv_layers = trial.suggest_int(
+        'number_hidden_conv_layers',
+        0,
+        2,
+    )
     standard_object.batch_size_base_two_logarithm = trial.suggest_int(
         'batch_size_base_two_logarithm',
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
-    standard_object.adam_learn_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-        'adam_learn_rate',
-        0,
-        1,
-    )
-    standard_object.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-        'adam_beta_1',
-        0,
-        1,
-    )
-    standard_object.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-        'adam_beta_2',
-        0,
-        1,
-    )
+    if trial.number == 0:
+        standard_object.adam_learning_rate = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+            'adam_learning_rate',
+            0,
+            2,
+        )
+        standard_object.adam_beta_1 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+            'adam_beta_1',
+            0,
+            1,
+        )
+        standard_object.adam_beta_2 = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+            'adam_beta_2',
+            0,
+            1,
+        )
+        standard_object.adam_epsilon = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+            'adam_epsilon',
+            0,
+            2
+        )
+    else:
+        standard_object.adam_learning_rate = trial.suggest_uniform(
+            'adam_learning_rate',
+            0,
+            2,
+        )
+        standard_object.adam_beta_1 = trial.suggest_uniform(
+            'adam_beta_1',
+            0,
+            1,
+        )
+        standard_object.adam_beta_2 = trial.suggest_uniform(
+            'adam_beta_2',
+            0,
+            1,
+        )
+        standard_object.adam_epsilon = trial.suggest_uniform(
+            'adam_epsilon',
+            0,
+            2
+        )
+    
     standard_object.adam_amsgrad_bool = trial.suggest_categorical(
         'adam_amsgrad_bool',
         [
@@ -132,18 +176,27 @@ def objective(trial):
     # Train and validate using hyper-parameters generated above
     clear_session()
     classifier_model = models.Sequential()
-    classifier_model.add(layers.Conv2D(4, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+    classifier_model.add(layers.Conv2D(
+        standard_object.number_of_conv_2d_filters,
+        (standard_object.first_conv2d_kernel_dim, standard_object.second_conv2d_kernel_dim),
+        activation=standard_object.conv2d_layers_activation_func,
+        input_shape=(28, 28, 1),
+    ))
     classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     for level in range(standard_object.number_hidden_conv_layers):
-        classifier_model.add(layers.Conv2D(4, (3, 3), activation=standard_object.hidden_layers_activation_func))
+        classifier_model.add(layers.Conv2D(
+        standard_object.number_of_conv_2d_filters,
+        (standard_object.first_conv2d_kernel_dim, standard_object.second_conv2d_kernel_dim),
+        activation=standard_object.conv2d_layers_activation_func,
+    ))
         classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     classifier_model.add(layers.Flatten())
     classifier_model.add(layers.Dense(10, activation='softmax'))
     standard_object.optimizer = Adam(
-        learning_rate=standard_object.adam_learn_rate,
+        learning_rate=standard_object.adam_learning_rate,
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
-        epsilon=epsilon(),
+        epsilon=standard_object.adam_epsilon,
         amsgrad=standard_object.adam_amsgrad_bool,
     )
     classifier_model.compile(
@@ -178,9 +231,10 @@ sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
-    pruner=optuna.pruners.MedianPruner(
+    pruner=optuna.pruners.PercentilePruner(
+        percentile=PERCENTILE_FOR_PRUNING,
         n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING,
-        n_warmup_steps=EARLY_STOPPING_PATIENCE_PARAMETER,
+        n_warmup_steps=WARMUP_EPOCHS_BEFORE_PRUNING,
     ),
 )
 study.optimize(
