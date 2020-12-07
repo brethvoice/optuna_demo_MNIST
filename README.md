@@ -28,8 +28,10 @@ If you choose to un-comment this import statement, run the following import firs
 If you have `setGPU` installed, this line avoid having to tell Python which GPU to use (by specifying `CUDA_VISIBLE_DEVICES`) because it will automatically select the one with least memory allocated.
 
 **PruneableEvaluateMNIST.py**
-Intended for use with `study_mnist_classifier_settings.py`.
+Abstraction of some code for files beginning with `study_mnist_classifier_settings.py`.
 
 # UPDATE
 
-A head to head matchup of using Jeffreys priors vs. not with Adam as the optimizer shows that not using Jeffreys priors results in a slightly **lower** test set accuracy after three times as many trials!  AdaBelief beats Adam when using Jeffreys priors; if not using them beats using them with AdaBelief as well as with Adam, I will concede the point.
+The Jeffreys prior experiments were flawed in that I continued using the prior after the first trial, so I am re-doing everything.  After the initial trial, there is an established posterior distribution, so a Jeffreys prior is no longer helpful.
+
+I am also comparing AdaBelief to Adam (neither with amsgrad enabled nor with learning rate schedules).  I am hoping the results of the Jeffreys prior experiment will be the same for either choice of machine learning optimizer.
