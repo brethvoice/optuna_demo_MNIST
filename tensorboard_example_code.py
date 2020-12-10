@@ -242,6 +242,7 @@ def objective(trial):
         metrics=[hp.Metric(CategoricalAccuracy().name, display_name=CategoricalAccuracy().name)],
     )
     hp_callback = hp.KerasCallback(writer=output_dir, hparams=session_hparams)
+    standard_object.callbacks.append(hp_callback)  # Append to callbacks list
     es_callback = EarlyStopping(
         monitor='val_loss',
         min_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
