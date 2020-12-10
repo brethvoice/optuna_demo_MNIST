@@ -13,7 +13,6 @@ from tensorflow.keras.utils import to_categorical
 from numpy import log2, floor
 import optuna
 from numpy.random import default_rng as random_generator_instantiator
-from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
@@ -32,6 +31,7 @@ NUMBER_OF_TRIALS_BEFORE_PRUNING = int(0.2 * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 WARMUP_EPOCHS_BEFORE_PRUNING = int(0.2 * MAXIMUM_EPOCHS_TO_TRAIN)
 PERCENTILE_FOR_PRUNING = 99.0
+EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 
@@ -71,6 +71,7 @@ def objective(trial):
         train_labels=train_labels,
         test_labels=test_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
+        early_stopping_significant_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
     )
@@ -133,6 +134,11 @@ def objective(trial):
             0,
             2
         )
+        standard_object.adam_epsilon = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+            'adam_epsilon',
+            0,
+            1
+        )
     else:
         standard_object.adam_learning_rate = trial.suggest_uniform(
             'adam_learning_rate',
@@ -154,15 +160,12 @@ def objective(trial):
             0,
             2
         )
+        standard_object.adam_epsilon = trial.suggest_uniform(
+            'adam_epsilon',
+            0,
+            1
+        )
     
-    standard_object.adam_amsgrad_bool = trial.suggest_categorical(
-        'adam_amsgrad_bool',
-        [
-            False,
-            True,
-        ]
-    )
-
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
 
@@ -197,7 +200,7 @@ def objective(trial):
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=standard_object.adam_epsilon,
-        amsgrad=standard_object.adam_amsgrad_bool,
+        amsgrad=0,  # False
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,
