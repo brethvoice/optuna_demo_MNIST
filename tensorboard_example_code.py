@@ -116,7 +116,7 @@ def objective(trial):
     standard_object.number_of_conv_2d_filters = trial.suggest_int(
         'number_of_conv_2d_filters',
         4,
-        14,
+        8,
     )
     standard_object.first_conv2d_kernel_dim = trial.suggest_int(
         'first_conv2d_kernel_dim',
