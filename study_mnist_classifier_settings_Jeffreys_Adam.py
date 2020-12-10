@@ -13,7 +13,6 @@ from tensorflow.keras.utils import to_categorical
 from numpy import log2, floor
 import optuna
 from numpy.random import default_rng as random_generator_instantiator
-from tensorflow.keras.backend import epsilon
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
@@ -29,6 +28,7 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
 MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 4 * 86400  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
 
@@ -68,6 +68,7 @@ def objective(trial):
         train_labels=train_labels,
         test_labels=test_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
+        early_stopping_significant_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
     )
@@ -125,6 +126,11 @@ def objective(trial):
             0,
             1,
         )
+        standard_object.adam_epsilon = rg.beta(0.5, 0.5) * trial.suggest_uniform(
+            'adam_epsilon',
+            0,
+            1
+        )
     else:
         standard_object.adam_learning_rate = trial.suggest_uniform(
             'adam_learning_rate',
@@ -140,6 +146,11 @@ def objective(trial):
             'adam_beta_2',
             0,
             1,
+        )
+        standard_object.adam_epsilon = trial.suggest_uniform(
+            'adam_epsilon',
+            0,
+            1
         )
 
     # Add early stopping callback
@@ -168,8 +179,8 @@ def objective(trial):
         learning_rate=standard_object.adam_learning_rate,
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
-        epsilon=epsilon(),
-        amsgrad=False,
+        epsilon=standard_object.adam_epsilon,
+        amsgrad=0,  # False
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,
@@ -186,7 +197,6 @@ def objective(trial):
         verbose=VERBOSITY_LEVEL_FOR_TENSORFLOW,
         callbacks=standard_object.callbacks,
         batch_size=standard_object.batch_size,
-        # run_eagerly=True,
     )
 
     # Evaluate performance on test data and report score
