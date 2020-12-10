@@ -7,6 +7,7 @@ import os
 from sklearn.model_selection import train_test_split as trn_val_split
 import shutil
 import ssl
+from tensorboard.plugins.hparams import api as hp
 from tensorflow.keras import datasets, layers, models
 from tensorflow.keras.backend import clear_session
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
@@ -112,22 +113,30 @@ def objective(trial):
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
     )
 
+    session_hparams = {}
+    hparams_list = []
     # Generate hyper-parameters
     standard_object.number_of_conv_2d_filters = trial.suggest_int(
         'number_of_conv_2d_filters',
         4,
         8,
     )
+    session_hparams['number_of_conv_2d_filters'] = standard_object.number_of_conv_2d_filters
+    hparams_list.append(hp.HParam('number_of_conv_2d_filters', hp.RealInterval(float(4), float(8))))
     standard_object.first_conv2d_kernel_dim = trial.suggest_int(
         'first_conv2d_kernel_dim',
         1,
-        4,
+        2,
     )
+    session_hparams['first_conv2d_kernel_dim'] = standard_object.first_conv2d_kernel_dim
+    hparams_list.append(hp.HParam('first_conv2d_kernel_dim', hp.RealInterval(float(1), float(2))))
     standard_object.second_conv2d_kernel_dim = trial.suggest_int(
         'second_conv2d_kernel_dim',
         1,
-        4,
+        2,
     )
+    session_hparams['second_conv2d_kernel_dim'] = standard_object.second_conv2d_kernel_dim
+    hparams_list.append(hp.HParam('second_conv2d_kernel_dim', hp.RealInterval(float(1), float(2))))
     standard_object.conv2d_layers_activation_func = trial.suggest_categorical(
         'conv2d_layers_activation_func',
         [
@@ -136,36 +145,54 @@ def objective(trial):
             'softplus',
         ]
     )
+    session_hparams['conv2d_layers_activation_func'] = standard_object.conv2d_layers_activation_func
+    hparams_list.append(hp.HParam('second_conv2d_kernel_dim', hp.Discrete([
+            'relu',
+            'sigmoid',
+            'softplus',
+        ])))
     standard_object.number_hidden_conv_layers = trial.suggest_int(
         'number_hidden_conv_layers',
         0,
         2,
     )
+    session_hparams['number_hidden_conv_layers'] = standard_object.number_hidden_conv_layers
+    hparams_list.append(hp.HParam('number_hidden_conv_layers', hp.RealInterval(float(0), float(2))))
     standard_object.batch_size_base_two_logarithm = trial.suggest_int(
         'batch_size_base_two_logarithm',
         0,
         MAXIMUM_BATCH_SIZE_POWER_OF_TWO,
     )
+    session_hparams['batch_size_base_two_logarithm'] = standard_object.batch_size_base_two_logarithm
+    hparams_list.append(hp.HParam('batch_size_base_two_logarithm', hp.RealInterval(float(0), float(MAXIMUM_BATCH_SIZE_POWER_OF_TWO))))
     standard_object.adam_learning_rate = trial.suggest_uniform(
         'adam_learning_rate',
         0,
         2,
     )
+    session_hparams['adam_learning_rate'] = standard_object.adam_learning_rate
+    hparams_list.append(hp.HParam('adam_learning_rate', hp.RealInterval(float(0), float(2))))
     standard_object.adam_beta_1 = trial.suggest_uniform(
         'adam_beta_1',
         0,
         1,
     )
+    session_hparams['adam_beta_1'] = standard_object.adam_beta_1
+    hparams_list.append(hp.HParam('adam_beta_1', hp.RealInterval(float(0), float(1))))
     standard_object.adam_beta_2 = trial.suggest_uniform(
         'adam_beta_2',
         0,
         1,
     )
+    session_hparams['adam_beta_2'] = standard_object.adam_beta_2
+    hparams_list.append(hp.HParam('adam_beta_2', hp.RealInterval(float(0), float(1))))
     standard_object.adam_epsilon = trial.suggest_uniform(
         'adam_epsilon',
         0,
         1
     )
+    session_hparams['adam_epsilon'] = standard_object.adam_epsilon
+    hparams_list.append(hp.HParam('adam_epsilon', hp.RealInterval(float(0), float(1))))
 
     # Train and validate using hyper-parameters generated above
     clear_session()
@@ -210,6 +237,11 @@ def objective(trial):
     )
     standard_object.callbacks.append(tb_callback)  # Append to callbacks list
 
+    hp.hparams_config(
+        hparams=hparams_list,
+        metrics=[hp.Metric(CategoricalAccuracy().name, display_name=CategoricalAccuracy().name)],
+    )
+    hp_callback = hp.KerasCallback(writer=output_dir, hparams=session_hparams)
     es_callback = EarlyStopping(
         monitor='val_loss',
         min_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
