@@ -2,7 +2,11 @@
 
 Change timeout settings and/or number of trials for Optuna study before running.
 
- (files beginning with) **study_mnist_classifier_settings.py**:
+**tensorboard_example_code.py**:
+This is posted to support a GitHub issue report on TensorBoard's "HPARAMS" plugin.  Please contribute there if you can:
+https://github.com/tensorflow/tensorflow/issues/45384
+
+(files beginning with) **study_mnist_classifier_settings.py**:
 If using a docker, test the following commands first and make sure they run; if they do not then install `scikit-learn` and `optuna`:
 
 ```
