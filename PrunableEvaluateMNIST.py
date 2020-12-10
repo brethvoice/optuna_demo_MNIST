@@ -20,7 +20,8 @@ class PrunableEvaluateMNIST(object):
         train_labels,
         test_labels,
         validation_data_proportion=0.06147143,
-        early_stopping_patience=50,
+        early_stopping_significant_delta=1e-6,
+        early_stopping_patience=10,
         verbosity=2,
     ):
         self.train_images = train_images
@@ -28,6 +29,7 @@ class PrunableEvaluateMNIST(object):
         self.train_labels = train_labels
         self.test_labels = test_labels
         self.validation_data_proportion = validation_data_proportion
+        self.self.early_stopping_significant_delta = early_stopping_significant_delta
         self.early_stopping_patience = early_stopping_patience
         self.verbosity = verbosity  # 1, 2, or 3 (2)
         self.callbacks = []  # Empty list to which one may append any number of callbacks
@@ -50,7 +52,7 @@ class PrunableEvaluateMNIST(object):
     def append_early_stopper_callback(self):  # Implement patience for early stopping
         early_stopper = EarlyStopping(
             monitor='val_loss',
-            min_delta=0.0001,
+            min_delta=self.early_stopping_significant_delta,
             patience=self.early_stopping_patience,
             verbose=self.verbosity,
             mode='auto',
