@@ -36,6 +36,7 @@ Abstraction of some code for files beginning with `study_mnist_classifier_settin
 
 # UPDATE
 
-The Jeffreys prior experiments were flawed in that I continued using the prior after the first trial, so I am re-doing everything.  After the initial trial, there is an established posterior distribution, so a Jeffreys prior is no longer helpful.
+I have re-started the experiments.  This is in connection with the following feature request for Optuna:
+https://github.com/optuna/optuna/issues/1972
 
 I am also comparing AdaBelief to Adam (neither with amsgrad enabled nor with learning rate schedules).  I am hoping the results of the Jeffreys prior experiment will be the same for either choice of machine learning optimizer.
