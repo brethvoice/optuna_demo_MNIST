@@ -85,16 +85,6 @@ def objective(trial):
         4,
         8,
     )
-    standard_object.first_conv2d_kernel_dim = trial.suggest_int(
-        'first_conv2d_kernel_dim',
-        1,
-        2,
-    )
-    standard_object.second_conv2d_kernel_dim = trial.suggest_int(
-        'second_conv2d_kernel_dim',
-        1,
-        2,
-    )
     standard_object.conv2d_layers_activation_func = trial.suggest_categorical(
         'conv2d_layers_activation_func',
         [
@@ -132,11 +122,6 @@ def objective(trial):
         standard_object.adam_epsilon = rg.beta(0.5, 0.5) * trial.suggest_uniform(
             'adam_epsilon',
             0,
-            2
-        )
-        standard_object.adam_epsilon = rg.beta(0.5, 0.5) * trial.suggest_uniform(
-            'adam_epsilon',
-            0,
             1
         )
     else:
@@ -154,11 +139,6 @@ def objective(trial):
             'adam_beta_2',
             0,
             1,
-        )
-        standard_object.adam_epsilon = trial.suggest_uniform(
-            'adam_epsilon',
-            0,
-            2
         )
         standard_object.adam_epsilon = trial.suggest_uniform(
             'adam_epsilon',
@@ -181,7 +161,7 @@ def objective(trial):
     classifier_model = models.Sequential()
     classifier_model.add(layers.Conv2D(
         standard_object.number_of_conv_2d_filters,
-        (standard_object.first_conv2d_kernel_dim, standard_object.second_conv2d_kernel_dim),
+        (2, 2),
         activation=standard_object.conv2d_layers_activation_func,
         input_shape=(28, 28, 1),
     ))
@@ -189,7 +169,7 @@ def objective(trial):
     for level in range(standard_object.number_hidden_conv_layers):
         classifier_model.add(layers.Conv2D(
         standard_object.number_of_conv_2d_filters,
-        (standard_object.first_conv2d_kernel_dim, standard_object.second_conv2d_kernel_dim),
+        (2, 2),
         activation=standard_object.conv2d_layers_activation_func,
     ))
         classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
