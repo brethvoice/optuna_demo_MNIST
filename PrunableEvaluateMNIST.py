@@ -29,7 +29,7 @@ class PrunableEvaluateMNIST(object):
         self.train_labels = train_labels
         self.test_labels = test_labels
         self.validation_data_proportion = validation_data_proportion
-        self.self.early_stopping_significant_delta = early_stopping_significant_delta
+        self.early_stopping_significant_delta = early_stopping_significant_delta
         self.early_stopping_patience = early_stopping_patience
         self.verbosity = verbosity  # 1, 2, or 3 (2)
         self.callbacks = []  # Empty list to which one may append any number of callbacks

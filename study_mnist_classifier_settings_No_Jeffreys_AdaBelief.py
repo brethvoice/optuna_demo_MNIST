@@ -24,9 +24,9 @@ from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 # import setGPU  # Find and make visible the GPU with least memory allocated
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 50  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 10 * 3600  # 3600 seconds = one hour
-MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 3.75 * 24 * 3600  # 3600 seconds = one hour
+MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
@@ -71,9 +71,6 @@ def objective(trial):
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
     )
-
-    # Instantiate a random number generator
-    rg = random_generator_instantiator()
 
     # Generate hyper-parameters
     standard_object.number_of_conv_2d_filters = trial.suggest_int(
@@ -147,8 +144,8 @@ def objective(trial):
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=standard_object.adam_epsilon,
-        rectify=0,  # False, to compare with Adam (unrectified)
-        amsgrad=0,  # False, this was just another attempt to make Adam converge
+        rectify=False,  # to compare with Adam (unrectified)
+        amsgrad=False,  # this was just another attempt to make Adam converge
     )
     classifier_model.compile(
         optimizer=standard_object.optimizer,
@@ -165,7 +162,6 @@ def objective(trial):
         verbose=VERBOSITY_LEVEL_FOR_TENSORFLOW,
         callbacks=standard_object.callbacks,
         batch_size=standard_object.batch_size,
-        # run_eagerly=True,
     )
 
     # Evaluate performance on test data and report score
