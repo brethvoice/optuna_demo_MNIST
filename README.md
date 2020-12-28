@@ -36,7 +36,7 @@ Abstraction of some code for files beginning with `study_mnist_classifier_settin
 
 # UPDATE
 
-I have re-started the experiments.  This is in connection with the following feature request for Optuna:
+I have re-started the experiments (again...this time using GPU for Tensorflow as that is what the library was designed to use).  This is in connection with the following feature request for Optuna:
 https://github.com/optuna/optuna/issues/1972
 
 I am also comparing AdaBelief to Adam (neither with amsgrad enabled nor with learning rate schedules).  I am hoping the results of the Jeffreys prior experiment will be the same for either choice of machine learning optimizer.
