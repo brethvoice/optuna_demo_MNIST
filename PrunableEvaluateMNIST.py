@@ -9,6 +9,9 @@ https://www.analyticsvidhya.com/blog/2020/07/how-to-train-an-image-classificatio
 from sklearn.model_selection import train_test_split as trn_val_split
 from numpy.random import RandomState
 from tensorflow.keras.callbacks import EarlyStopping
+import os
+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 
 class PrunableEvaluateMNIST(object):
