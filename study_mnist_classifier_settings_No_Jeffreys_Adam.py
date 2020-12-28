@@ -7,7 +7,6 @@ https://www.analyticsvidhya.com/blog/2020/07/how-to-train-an-image-classificatio
 """
 
 import ssl
-
 from tensorflow.keras import datasets
 from tensorflow.keras.utils import to_categorical
 from numpy import log2, floor
@@ -21,12 +20,15 @@ from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
-# import setGPU  # Find and make visible the GPU with least memory allocated
+import setGPU  # Find and make visible the GPU with least memory allocated
+import os
+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 3.75 * 24 * 3600  # 3600 seconds = one hour
-MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 4 * 24 * 3600  # 3600 seconds = one hour
+MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
 EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
@@ -205,6 +207,18 @@ pruned_trials = [
 ]
 print('Number of pruned trials is {}'.format(len(pruned_trials)))
 set_trace()
+print('\n\nImproved scores after first trial:')
+number_of_trials = len(study.trials)
+for report_index in range(1, number_of_trials):
+    trial_to_report = study.trials[report_index]
+    score_of_trial_to_report = trial_to_report.value
+    improved_score = (score_of_trial_to_report > best_score_so_far)
+    if improved_score:
+        best_score_so_far = score_of_trial_to_report
+        print('\nTrial {}:'.format(trial_to_report.number), end=' ')
+        print('began at {}.'.format(trial_to_report.datetime_start))
+        print('Score was {},'.format(trial_to_report.value), end=' ')
+        print('and its parameters were: {}\n'.format(trial_to_report.params))
 
 # This does not work for some reason
 # fig = optuna.visualization.plot_param_importances(study)
