@@ -22,7 +22,7 @@ class PrunableEvaluateMNIST(object):
         test_images,
         train_labels,
         test_labels,
-        validation_data_proportion=0.06147143,
+        validation_data_proportion=0.93611667,  # (60,000 - 56,167) / 60,000
         early_stopping_significant_delta=1e-6,
         early_stopping_patience=10,
         verbosity=2,
