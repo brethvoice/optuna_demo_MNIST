@@ -74,28 +74,7 @@ def objective(trial):
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
     )
 
-    # Instantiate a random number generator
-    # rg = random_generator_instantiator()
-
     # Generate hyper-parameters
-    standard_object.number_of_conv_2d_filters = trial.suggest_int(
-        'number_of_conv_2d_filters',
-        4,
-        8,
-    )
-    standard_object.conv2d_layers_activation_func = trial.suggest_categorical(
-        'conv2d_layers_activation_func',
-        [
-            'relu',
-            'sigmoid',
-            'softplus',
-        ]
-    )
-    standard_object.number_hidden_conv_layers = trial.suggest_int(
-        'number_hidden_conv_layers',
-        0,
-        2,
-    )
     standard_object.batch_size_base_two_logarithm = trial.suggest_int(
         'batch_size_base_two_logarithm',
         0,
@@ -129,19 +108,18 @@ def objective(trial):
     clear_session()
     classifier_model = models.Sequential()
     classifier_model.add(layers.Conv2D(
-        standard_object.number_of_conv_2d_filters,
+        8,
         (2, 2),
-        activation=standard_object.conv2d_layers_activation_func,
+        activation='relu',
         input_shape=(28, 28, 1),
     ))
     classifier_model.add(layers.MaxPooling2D((2, 2)))
-    for level in range(standard_object.number_hidden_conv_layers):
-        classifier_model.add(layers.Conv2D(
-        standard_object.number_of_conv_2d_filters,
+    classifier_model.add(layers.Conv2D(
+        8,
         (2, 2),
-        activation=standard_object.conv2d_layers_activation_func,
+        activation='relu',
     ))
-        classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
+    classifier_model.add(layers.MaxPooling2D((2, 2), strides=2))
     classifier_model.add(layers.Flatten())
     classifier_model.add(layers.Dense(10, activation='softmax'))
     standard_object.optimizer = Adam(
@@ -195,18 +173,10 @@ set_trace()  # Before taking any more steps, pause execution
 # Report completed study results:
 print('Study statistics:  ')
 print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
-print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
-print('\n\nParameters: ')
+print('\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
+print('\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
-completed_trials = [
-    t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
-]
-print('Number of completed trials is {}'.format(len(completed_trials)))
-pruned_trials = [
-    t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
-]
-print('Number of pruned trials is {}'.format(len(pruned_trials)))
 first_trial = study.trials[0]
 best_score_so_far = first_trial.value
 print('\n\nImproved scores after first trial:')
