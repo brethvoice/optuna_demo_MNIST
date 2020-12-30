@@ -22,8 +22,6 @@ from pdb import set_trace
 
 from PrunableEvaluateMNIST import PrunableEvaluateMNIST
 
-# import setGPU  # Find and make visible the GPU with least memory allocated
-
 # Specify length and nature of study; depending on batch size some trials can take minutes
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
 MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 18 * 3600  # 3600 seconds = one hour
@@ -243,7 +241,20 @@ pruned_trials = [
     t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
 ]
 print('Number of pruned trials is {}'.format(len(pruned_trials)))
+first_trial = study.trials[0]
+best_score_so_far = first_trial.value
+print('\n\nImproved scores after first trial:')
+number_of_trials = len(study.trials)
+for report_index in range(1, number_of_trials):
+    trial_to_report = study.trials[report_index]
+    score_of_trial_to_report = trial_to_report.value
+    improved_score = (score_of_trial_to_report > best_score_so_far)
+    if improved_score:
+        best_score_so_far = score_of_trial_to_report
+        print('\nTrial {}:'.format(trial_to_report.number), end=' ')
+        print('began at {}.'.format(trial_to_report.datetime_start))
+        print('Score was {},'.format(trial_to_report.value), end=' ')
+        print('and its parameters were: {}\n'.format(trial_to_report.params))
 
-# This does not work on DGX currently, but also does not throw error
 fig = optuna.visualization.plot_param_importances(study)
 fig.show()

@@ -147,7 +147,7 @@ def objective(trial):
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=standard_object.adam_epsilon,
-        rectify=False,  # to compare with Adam (unrectified)
+        rectify=True,  # recommended by developer
         amsgrad=False,  # this was just another attempt to make Adam converge
     )
     classifier_model.compile(
@@ -189,6 +189,7 @@ study.optimize(
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
     )
+set_trace()  # Before taking any more steps, pause execution
 
 # Report completed study results:
 print('Study statistics:  ')
@@ -205,7 +206,8 @@ pruned_trials = [
     t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
 ]
 print('Number of pruned trials is {}'.format(len(pruned_trials)))
-set_trace()
+first_trial = study.trials[0]
+best_score_so_far = first_trial.value
 print('\n\nImproved scores after first trial:')
 number_of_trials = len(study.trials)
 for report_index in range(1, number_of_trials):
@@ -218,7 +220,3 @@ for report_index in range(1, number_of_trials):
         print('began at {}.'.format(trial_to_report.datetime_start))
         print('Score was {},'.format(trial_to_report.value), end=' ')
         print('and its parameters were: {}\n'.format(trial_to_report.params))
-
-# This does not work for some reason
-fig = optuna.visualization.plot_param_importances(study)
-fig.show()
