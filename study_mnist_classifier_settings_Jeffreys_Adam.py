@@ -29,10 +29,13 @@ os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 # Specify length and nature of study; depending on batch size some trials can take minutes
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
 MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 4.5 * 24 * 3600  # 3600 seconds = one hour
-MAXIMUM_EPOCHS_TO_TRAIN = 100  # Each model will not train for more than this many epochs
+MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
+PERCENTILE_FOR_PRUNING = 50.0
+WARMUP_EPOCHS_BEFORE_PRUNING = int((1 - (PERCENTILE_FOR_PRUNING / 100)) * MAXIMUM_EPOCHS_TO_TRAIN)
+NUMBER_OF_TRIALS_BEFORE_PRUNING = int((1 - (PERCENTILE_FOR_PRUNING / 100)) * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
 
 # Establish MNIST-specific constants used in code below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
@@ -130,6 +133,13 @@ def objective(trial):
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
 
+    # Append tf.keras pruner for later use during study
+    keras_pruner = optuna.integration.TFKerasPruningCallback(
+        trial,
+        'val_categorical_accuracy',
+    )
+    standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
+
     # Train and validate using hyper-parameters generated above
     clear_session()
     classifier_model = models.Sequential()
@@ -187,6 +197,11 @@ sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
 study = optuna.create_study(
     sampler=sampler_multivariate,
     direction='maximize',
+    pruner=optuna.pruners.PercentilePruner(
+        percentile=PERCENTILE_FOR_PRUNING,
+        n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING,
+        n_warmup_steps=WARMUP_EPOCHS_BEFORE_PRUNING,
+    ),
 )
 study.optimize(
     objective,
@@ -203,6 +218,14 @@ print('\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value)
 print('\nParameters: ')
 for key, value in study.best_trial.params.items():
     print('{}: {}'.format(key, value))
+completed_trials = [
+    t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
+]
+print('Number of completed trials is {}'.format(len(completed_trials)))
+pruned_trials = [
+    t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
+]
+print('Number of pruned trials is {}'.format(len(pruned_trials)))
 first_trial = study.trials[0]
 best_score_so_far = first_trial.value
 print('\n\nImproved scores after first trial:')
