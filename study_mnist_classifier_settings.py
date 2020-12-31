@@ -102,7 +102,13 @@ def objective(trial):
         0,
         1
     )
-    
+
+    print('\nThis trial will use the following hyper-parameters:')
+    for key, value in trial.params.items():
+        print('{}: {}'.format(key, value))
+    if trial.number > 0:
+        print('in an attempt to improve on best objective function score of {}\n'.format(study.best_trial.value))
+
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
 
@@ -177,11 +183,17 @@ study = optuna.create_study(
         n_warmup_steps=WARMUP_EPOCHS_BEFORE_PRUNING,
     ),
 )
+def print_best_trial_so_far(study, trial):
+    print('\nBest trial so far used the following hyper-parameters:')
+    for key, value in study.best_trial.params.items():
+        print('{}: {}'.format(key, value))
+    print('to achieve objective function score of {}\n'.format(study.best_trial.value))
 study.optimize(
     objective,
     n_trials=MAXIMUM_NUMBER_OF_TRIALS_TO_RUN,
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
+    callbacks=[print_best_trial_so_far],
     )
 set_trace()  # Before taking any more steps, pause execution
 
