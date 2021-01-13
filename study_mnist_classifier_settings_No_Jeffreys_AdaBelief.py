@@ -27,7 +27,7 @@ os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
 MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 4.5 * 24 * 3600  # 3600 seconds = one hour
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 7 * 24 * 3600  # 3600 seconds = one hour
 MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
 EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
@@ -67,14 +67,13 @@ test_labels = to_categorical(test_labels)
 # This is what Optuna will optimize (minimize or maximize)
 def objective(trial):
     standard_object = PrunableEvaluateMNIST(
-        train_images=train_images,
-        test_images=test_images,
-        train_labels=train_labels,
-        test_labels=test_labels,
+        train_validate_images=train_images,
+        train_validate_labels=train_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
         early_stopping_significant_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
+        seed=0,
     )
 
     # Generate hyper-parameters
@@ -159,8 +158,8 @@ def objective(trial):
 
     # Evaluate performance on test data and report score
     test_metrics = classifier_model.evaluate(
-        standard_object.test_images,
-        standard_object.test_labels,
+        test_images,
+        test_labels,
         batch_size=standard_object.batch_size,
     )
     test_results_dict = {out: test_metrics[i] for i, out in enumerate(classifier_model.metrics_names)}

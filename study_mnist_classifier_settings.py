@@ -66,10 +66,8 @@ test_labels = to_categorical(test_labels)
 # This is what Optuna will optimize (minimize or maximize)
 def objective(trial):
     standard_object = PrunableEvaluateMNIST(
-        train_images=train_images,
-        test_images=test_images,
-        train_labels=train_labels,
-        test_labels=test_labels,
+        train_validate_images=train_images,
+        train_validate_labels=train_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
         early_stopping_significant_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
@@ -142,7 +140,7 @@ def objective(trial):
         beta_1=standard_object.adam_beta_1,
         beta_2=standard_object.adam_beta_2,
         epsilon=standard_object.adam_epsilon,
-        rectify=True,  # recommended by developer
+        rectify=False,  # recommended by developer
         amsgrad=False,  # this was just another attempt to make Adam converge
     )
     classifier_model.compile(
@@ -164,8 +162,8 @@ def objective(trial):
 
     # Evaluate performance on test data and report score
     test_metrics = classifier_model.evaluate(
-        standard_object.test_images,
-        standard_object.test_labels,
+        test_images,
+        test_labels,
         batch_size=standard_object.batch_size,
     )
     test_results_dict = {out: test_metrics[i] for i, out in enumerate(classifier_model.metrics_names)}

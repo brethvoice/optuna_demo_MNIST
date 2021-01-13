@@ -18,37 +18,35 @@ class PrunableEvaluateMNIST(object):
 
     def __init__(
         self,
-        train_images,
-        test_images,
-        train_labels,
-        test_labels,
+        train_validate_images,
+        train_validate_labels,
         validation_data_proportion=0.93611667,  # (60,000 - 56,167) / 60,000
         early_stopping_significant_delta=1e-6,
         early_stopping_patience=10,
         verbosity=2,
+        seed=None,
     ):
-        self.train_images = train_images
-        self.test_images = test_images
-        self.train_labels = train_labels
-        self.test_labels = test_labels
+        self.train_validate_images = train_validate_images
+        self.train_validate_labels = train_validate_labels
         self.validation_data_proportion = validation_data_proportion
         self.early_stopping_significant_delta = early_stopping_significant_delta
         self.early_stopping_patience = early_stopping_patience
         self.verbosity = verbosity  # 1, 2, or 3 (2)
         self.callbacks = []  # Empty list to which one may append any number of callbacks
+        self.seed = seed
 
     def set_batch_size(self, batch_size_base_two_logarithm):
         self.batch_size = 2 ** int(batch_size_base_two_logarithm)
 
     def stratified_split_for_training_and_validation(self):
-        instance_of_random_state = RandomState()
+        instance_of_random_state = RandomState(self.seed)
         self.train_split_images, validate_split_images, self.train_split_labels, validate_split_labels = trn_val_split(
-            self.train_images,
-            self.train_labels,
+            self.train_validate_images,
+            self.train_validate_labels,
             test_size=self.validation_data_proportion,
             random_state=instance_of_random_state,
             shuffle=True,
-            stratify=self.train_labels,
+            stratify=self.train_validate_labels,
         )
         self.validate_split_data = (validate_split_images, validate_split_labels)
 
