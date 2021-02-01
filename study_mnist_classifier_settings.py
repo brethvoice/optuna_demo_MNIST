@@ -191,7 +191,7 @@ def print_best_trial_so_far(study, trial):
     print('\nHyper-parameter importances so far, according to FANOVA:')
     if trial.number > 0:
         print('\nHyper-parameter importances so far, according to FANOVA:')
-        for key, value in optuna.importance.get_param_importances(study):
+        for key, value in optuna.importance.get_param_importances(study).items():
             print('{}: {}'.format(key, value))
 
 
