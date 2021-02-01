@@ -16,24 +16,20 @@ from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
 from adabelief_tf import AdaBeliefOptimizer
-from pdb import set_trace
+import json
 
-from PrunableEvaluateMNIST import PrunableEvaluateMNIST
+from EvaluateMNIST import EvaluateMNIST
 
 import os
-
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 # Specify length and nature of study; depending on batch size some trials can take minutes
-MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 500  # For the Optuna study itself
-MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 4.5 * 24 * 3600  # 3600 seconds = one hour
-MAXIMUM_EPOCHS_TO_TRAIN = 500  # Each model will not train for more than this many epochs
+MAXIMUM_NUMBER_OF_TRIALS_TO_RUN = 15  # For the Optuna study itself
+MAXIMUM_SECONDS_TO_CONTINUE_STUDY = 2 * 3600  # 3600 seconds = one hour
+MAXIMUM_EPOCHS_TO_TRAIN = 10  # Each model will not train for more than this many epochs
 EARLY_STOPPING_SIGNIFICANT_DELTA = 1e-6
 EARLY_STOPPING_PATIENCE_PARAMETER = int(0.1 * MAXIMUM_EPOCHS_TO_TRAIN)  # For tf.keras' EarlyStopping callback
 VERBOSITY_LEVEL_FOR_TENSORFLOW = 2  # One verbosity for both training and EarlyStopping callback
-PERCENTILE_FOR_PRUNING = 50.0
-WARMUP_EPOCHS_BEFORE_PRUNING = int((1 - (PERCENTILE_FOR_PRUNING / 100)) * MAXIMUM_EPOCHS_TO_TRAIN)
-NUMBER_OF_TRIALS_BEFORE_PRUNING = int((1 - (PERCENTILE_FOR_PRUNING / 100)) * MAXIMUM_NUMBER_OF_TRIALS_TO_RUN)
 
 # Establish MNIST-specific constants used in code below
 MNIST_TRAINING_AND_VALIDATION_SET_SIZE = 60000
@@ -65,13 +61,14 @@ test_labels = to_categorical(test_labels)
 
 # This is what Optuna will optimize (minimize or maximize)
 def objective(trial):
-    standard_object = PrunableEvaluateMNIST(
+    standard_object = EvaluateMNIST(
         train_validate_images=train_images,
         train_validate_labels=train_labels,
         validation_data_proportion=(1-JUN_SHAO_TRAINING_PROPORTION),
         early_stopping_significant_delta=EARLY_STOPPING_SIGNIFICANT_DELTA,
         early_stopping_patience=EARLY_STOPPING_PATIENCE_PARAMETER,
         verbosity=VERBOSITY_LEVEL_FOR_TENSORFLOW,
+        seed=0,
     )
 
     # Generate hyper-parameters
@@ -102,20 +99,14 @@ def objective(trial):
     )
 
     print('\nThis trial will use the following hyper-parameters:')
-    for key, value in trial.params.items():
-        print('{}: {}'.format(key, value))
+    for key, val in trial.params.items():
+        print('{}: {}'.format(key, val))
     if trial.number > 0:
-        print('in an attempt to improve on best objective function score of {}\n'.format(study.best_trial.value))
+        print('in an attempt to improve on best objective function score of {:0.5f}\n'.format(study.best_trial.value))
+    print('\n\n')
 
     # Add early stopping callback
     standard_object.append_early_stopper_callback()
-
-    # Append tf.keras pruner for later use during study
-    keras_pruner = optuna.integration.TFKerasPruningCallback(
-        trial,
-        'val_categorical_accuracy',
-    )
-    standard_object.callbacks.append(keras_pruner)  # Append to callbacks list
 
     # Train and validate using hyper-parameters generated above
     clear_session()
@@ -171,28 +162,48 @@ def objective(trial):
 
 
 # Create and run Optuna study
-sampler_multivariate = optuna.samplers.TPESampler(multivariate=True)
+sampler = optuna.samplers.TPESampler(multivariate=True, seed=0)
 study = optuna.create_study(
-    sampler=sampler_multivariate,
+    sampler=sampler,
     direction='maximize',
-    pruner=optuna.pruners.PercentilePruner(
-        percentile=PERCENTILE_FOR_PRUNING,
-        n_startup_trials=NUMBER_OF_TRIALS_BEFORE_PRUNING,
-        n_warmup_steps=WARMUP_EPOCHS_BEFORE_PRUNING,
-    ),
 )
 
 
-def print_best_trial_so_far(study, trial):
+def print_and_save_trial_progress(study, trial):
     print('\nBest trial so far used the following hyper-parameters:')
-    for key, value in study.best_trial.params.items():
-        print('{}: {}'.format(key, value))
-    print('to achieve objective function score of {}\n'.format(study.best_trial.value))
-    print('\nHyper-parameter importances so far, according to FANOVA:')
-    if trial.number > 0:
+    for key, val in study.best_trial.params.items():
+        print('{}: {}'.format(key, val))
+    print('to achieve objective function score of {:0.5f}\n'.format(study.best_trial.value))
+    completed_trials = [
+        t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
+    ]
+    if len(completed_trials) > 1:
+        importances_dict = optuna.importance.get_param_importances(study)
+        with open('importances.json', 'w') as fp:
+            json.dump(importances_dict, fp, indent=2)
         print('\nHyper-parameter importances so far, according to FANOVA:')
-        for key, value in optuna.importance.get_param_importances(study).items():
-            print('{}: {}'.format(key, value))
+        for key, val in importances_dict.items():
+            print('{}: {}'.format(key, val))
+        progress_dict = {}
+        progress_dict['trial_ids'] = []
+        progress_dict['start_times'] = []
+        progress_dict['scores'] = []
+        progress_dict['parameters'] = []
+        first_trial = study.trials[0]
+        best_score_so_far = first_trial.value
+        number_of_trials = len(study.trials)
+        for report_index in range(1, number_of_trials):
+            trial_to_report = study.trials[report_index]
+            score_of_trial_to_report = trial_to_report.value
+            improved_score = (score_of_trial_to_report > best_score_so_far)
+            if improved_score:
+                best_score_so_far = score_of_trial_to_report
+                progress_dict['trial_ids'].append(trial_to_report.number)
+                progress_dict['start_times'].append(str(trial_to_report.datetime_start))
+                progress_dict['scores'].append(trial_to_report.value)
+                progress_dict['parameters'].append(trial_to_report.params)
+                with open('progress.json', 'w') as fp:
+                    json.dump(progress_dict, fp, indent=2)
 
 
 study.optimize(
@@ -200,25 +211,20 @@ study.optimize(
     n_trials=MAXIMUM_NUMBER_OF_TRIALS_TO_RUN,
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
-    callbacks=[print_best_trial_so_far],
+    callbacks=[print_and_save_trial_progress],
 )
-set_trace()  # Before taking any more steps, pause execution
 
 # Report completed study results:
 print('Study statistics:  ')
 print('\n\nBest trial number was {}\n\n'.format(study.best_trial))
-print('\n\nBest categorical accuracy was {}\n\n...'.format(study.best_trial.value))
+print('\n\nBest categorical accuracy was {:0.5f}\n\n...'.format(study.best_trial.value))
 print('\n\nParameters: ')
-for key, value in study.best_trial.params.items():
-    print('{}: {}'.format(key, value))
+for key, val in study.best_trial.params.items():
+    print('{}: {}'.format(key, val))
 completed_trials = [
     t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
 ]
 print('Number of completed trials is {}'.format(len(completed_trials)))
-pruned_trials = [
-    t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
-]
-print('Number of pruned trials is {}'.format(len(pruned_trials)))
 first_trial = study.trials[0]
 best_score_so_far = first_trial.value
 print('\n\nImproved scores after first trial:')
@@ -231,7 +237,7 @@ for report_index in range(1, number_of_trials):
         best_score_so_far = score_of_trial_to_report
         print('\nTrial {}:'.format(trial_to_report.number), end=' ')
         print('began at {}.'.format(trial_to_report.datetime_start))
-        print('Score was {},'.format(trial_to_report.value), end=' ')
+        print('Score was {:0.5f},'.format(trial_to_report.value), end=' ')
         print('and its parameters were: {}\n'.format(trial_to_report.params))
 
 fig = optuna.visualization.plot_param_importances(study)
