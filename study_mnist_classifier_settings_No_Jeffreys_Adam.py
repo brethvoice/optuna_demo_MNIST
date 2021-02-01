@@ -176,12 +176,25 @@ study = optuna.create_study(
         n_warmup_steps=WARMUP_EPOCHS_BEFORE_PRUNING,
     ),
 )
+
+
+def print_best_trial_so_far(study, trial):
+    print('\nBest trial so far used the following hyper-parameters:')
+    for key, value in study.best_trial.params.items():
+        print('{}: {}'.format(key, value))
+    print('to achieve objective function score of {}\n'.format(study.best_trial.value))
+    print('\nHyper-parameter importances so far, according to FANOVA:')
+    for key, value in optuna.importance.get_param_importances(study):
+        print('{}: {}'.format(key, value))
+
+
 study.optimize(
     objective,
     n_trials=MAXIMUM_NUMBER_OF_TRIALS_TO_RUN,
     timeout=MAXIMUM_SECONDS_TO_CONTINUE_STUDY,
     gc_after_trial=True,
-    )
+    callbacks=[print_best_trial_so_far],
+)
 set_trace()  # Before taking any more steps, pause execution
 
 # Report completed study results:
