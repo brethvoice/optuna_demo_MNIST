@@ -16,7 +16,7 @@ from tensorflow.keras.backend import clear_session
 from tensorflow.keras import layers, models
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import CategoricalAccuracy
-from pdb import set_trace
+from tensorflow.random import set_seed
 
 from EvaluateMNIST import EvaluateMNIST
 
@@ -133,6 +133,7 @@ def objective(trial):
     )
     standard_object.set_batch_size(standard_object.batch_size_base_two_logarithm)
     standard_object.stratified_split_for_training_and_validation()
+    set_seed(standard_object.seed)
     classifier_model.fit(
         standard_object.train_split_images,
         standard_object.train_split_labels,
